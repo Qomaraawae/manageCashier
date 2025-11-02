@@ -41,6 +41,9 @@ function Sidebar({ isOpen, onClose }) {
 
   // Touch event handlers untuk mobile
   const onTouchStart = (e) => {
+    // Hanya aktifkan swipe di mobile
+    if (window.innerWidth >= 768) return
+    
     setTouchStart(e.targetTouches[0].clientX)
     setTouchCurrent(e.targetTouches[0].clientX)
     setStartTime(Date.now())
@@ -48,7 +51,8 @@ function Sidebar({ isOpen, onClose }) {
   }
 
   const onTouchMove = (e) => {
-    if (!touchStart || !isDragging) return
+    // Hanya aktifkan swipe di mobile
+    if (!touchStart || !isDragging || window.innerWidth >= 768) return
     
     const currentTouch = e.targetTouches[0].clientX
     const diff = currentTouch - touchStart
@@ -65,7 +69,8 @@ function Sidebar({ isOpen, onClose }) {
   }
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchCurrent || !isDragging) {
+    // Hanya aktifkan swipe di mobile
+    if (!touchStart || !touchCurrent || !isDragging || window.innerWidth >= 768) {
       setIsDragging(false)
       setTranslateX(0)
       return
@@ -94,7 +99,7 @@ function Sidebar({ isOpen, onClose }) {
 
   // Mouse event handlers untuk desktop
   const onMouseDown = (e) => {
-    // Hanya aktifkan di mobile (md:hidden)
+    // Hanya aktifkan di mobile
     if (window.innerWidth >= 768) return
     
     setTouchStart(e.clientX)
@@ -161,7 +166,10 @@ function Sidebar({ isOpen, onClose }) {
   const handleLogout = async (e) => {
     e.preventDefault()
     await logout()
-    onClose()
+    // Hanya close jika di mobile
+    if (window.innerWidth < 768) {
+      onClose()
+    }
   }
 
   // Hitung opacity backdrop berdasarkan posisi sidebar
@@ -174,7 +182,7 @@ function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
-      {/* Mobile Sidebar Backdrop */}
+      {/* Mobile Sidebar Backdrop - Hanya tampil di mobile */}
       {isOpen && (
         <div 
           className="fixed inset-0 z-40 bg-gray-600 md:hidden transition-opacity duration-200" 
@@ -189,15 +197,15 @@ function Sidebar({ isOpen, onClose }) {
       {/* Sidebar */}
       <aside 
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 z-50 w-80 max-w-[95vw] bg-white shadow-xl md:relative md:translate-x-0 md:w-64 ${
-          isDragging ? '' : 'transition-transform duration-300 ease-out'
-        } ${
-          isOpen ? '' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl
+          md:sticky md:top-0 md:h-screen md:translate-x-0
+          ${isDragging ? '' : 'transition-transform duration-300 ease-out'}
+          ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
         style={{
           transform: isOpen && window.innerWidth < 768
             ? `translateX(${translateX}px)` 
-            : isOpen ? 'translateX(0)' : 'translateX(-100%)'
+            : undefined
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -209,10 +217,11 @@ function Sidebar({ isOpen, onClose }) {
           <Link 
             to="/" 
             className="flex items-center space-x-2" 
-            onClick={onClose}
+            onClick={() => window.innerWidth < 768 && onClose()}
           >
-            <span className="text-2xl font-bold text-primary-500">MiniMarket</span>
+            <span className="text-xl md:text-2xl font-bold text-primary-500">MiniMarket</span>
           </Link>
+          {/* Tombol close hanya tampil di mobile */}
           <button 
             className="p-2 md:hidden text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             onClick={onClose}
@@ -223,22 +232,22 @@ function Sidebar({ isOpen, onClose }) {
         </div>
         
         {/* Navigation Links */}
-        <nav className="p-4">
+        <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
           <ul className="space-y-2">
             {navItems.map((item) => (
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`flex items-center p-3 rounded-lg transition-colors text-base ${
+                  className={`flex items-center p-3 rounded-lg transition-colors text-sm md:text-base ${
                     pathname === item.path 
                       ? 'bg-primary-500 text-white' 
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
-                  onClick={onClose}
+                  onClick={() => window.innerWidth < 768 && onClose()}
                 >
                   <div className="flex items-center w-full">
                     {item.icon}
-                    <span className="ml-4 flex-1">{item.name}</span>
+                    <span className="ml-3 md:ml-4 flex-1">{item.name}</span>
                   </div>
                 </Link>
               </li>
@@ -248,17 +257,21 @@ function Sidebar({ isOpen, onClose }) {
         
         {/* User Info & Logout */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-white">
-          <div className="flex items-center mb-4">
-            <div className="w-10 h-10 bg-primary-500 text-white rounded-full flex items-center justify-center text-base">
+          <div className="flex items-center mb-3 md:mb-4">
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-primary-500 text-white rounded-full flex items-center justify-center text-sm md:text-base font-semibold flex-shrink-0">
               {user?.displayName?.charAt(0).toUpperCase() || 'U'}
             </div>
-            <div className="ml-4 flex-1 min-w-0">
-              <p className="text-base font-medium text-gray-700 truncate">{user?.displayName || 'User'}</p>
-              <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+            <div className="ml-3 flex-1 min-w-0">
+              <p className="text-sm md:text-base font-medium text-gray-700 truncate">
+                {user?.displayName || 'User'}
+              </p>
+              <p className="text-xs md:text-sm text-gray-500 truncate">
+                {user?.email}
+              </p>
             </div>
           </div>
           <button
-            className="w-full py-3 px-4 btn btn-outline text-red-500 hover:bg-red-50 text-base rounded-lg"
+            className="w-full py-2 md:py-3 px-4 btn btn-outline text-red-500 hover:bg-red-50 text-sm md:text-base rounded-lg transition-colors"
             onClick={handleLogout}
           >
             Sign Out

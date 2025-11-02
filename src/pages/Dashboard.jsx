@@ -2,7 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { MdPointOfSale, MdInventory, MdShoppingBag, MdInsights, MdClose } from 'react-icons/md';
+import { 
+  MdPointOfSale, 
+  MdInventory, 
+  MdShoppingBag, 
+  MdInsights, 
+  MdClose
+} from 'react-icons/md';
 import { format } from 'date-fns';
 import id from 'date-fns/locale/id';
 
@@ -198,7 +204,7 @@ function Dashboard() {
       title: 'Total Penjualan',
       value: formatRupiah(stats.totalSales || 0),
       icon: <MdPointOfSale size={24} />,
-      color: 'bg-primary-500',
+      color: 'bg-blue-500',
       clickable: false,
       navigateTo: null,
     },
@@ -206,7 +212,7 @@ function Dashboard() {
       title: 'Total Produk',
       value: stats.totalProducts || 0,
       icon: <MdShoppingBag size={24} />,
-      color: 'bg-secondary-500',
+      color: 'bg-teal-500',
       clickable: true,
       navigateTo: '/products',
     },
@@ -214,9 +220,9 @@ function Dashboard() {
       title: 'Stok Rendah',
       value: stats.lowStock || 0,
       icon: <MdInventory size={24} />,
-      color: 'bg-accent-500',
+      color: 'bg-orange-500',
       clickable: true,
-      navigateTo: null, // Akan membuka modal
+      navigateTo: null,
       openModal: true,
     },
     {
@@ -267,24 +273,20 @@ function Dashboard() {
   const handleCardClick = (index) => {
     const card = statCards[index];
     
-    // Efek animasi scale
     setActiveCard(index);
     
-    // Jika card memiliki modal (Stok Rendah)
     if (card.openModal) {
       setTimeout(() => {
         setShowLowStockModal(true);
         setActiveCard(null);
       }, 150);
     } 
-    // Jika card memiliki navigasi
     else if (card.navigateTo) {
       setTimeout(() => {
         navigate(card.navigateTo);
         setActiveCard(null);
       }, 150);
     } 
-    // Card tidak clickable
     else {
       setTimeout(() => setActiveCard(null), 200);
     }
@@ -292,8 +294,9 @@ function Dashboard() {
 
   return (
     <div className="animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dasbor</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dasbor</h1>
       </div>
 
       {error && (
@@ -302,8 +305,8 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Kartu Statistik */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Kartu Statistik - Responsive Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {statCards.map((stat, index) => (
           <div
             key={index}
@@ -312,16 +315,18 @@ function Dashboard() {
               stat.clickable ? 'cursor-pointer' : 'cursor-default'
             } ${
               activeCard === index ? 'scale-95 shadow-inner' : 'scale-100 hover:scale-105 hover:shadow-xl'
-            } ${stat.clickable ? 'ring-2 ring-transparent hover:ring-accent-300 hover:ring-offset-2' : ''}`}
+            } ${stat.clickable ? 'ring-2 ring-transparent hover:ring-blue-300 hover:ring-offset-2' : ''}`}
           >
-            <div className="p-5">
+            <div className="p-4 md:p-5">
               <div className="flex items-center">
-                <div className={`rounded-md p-3 ${stat.color} text-white mr-4 flex-shrink-0`}>
+                <div className={`rounded-lg p-3 ${stat.color} text-white mr-3 md:mr-4 flex-shrink-0`}>
                   {stat.icon}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-500 truncate">{stat.title}</p>
-                  <p className="text-xl sm:text-2xl font-semibold text-gray-900 truncate">
+                  <p className="text-xs md:text-sm font-medium text-gray-500 truncate mb-1">
+                    {stat.title}
+                  </p>
+                  <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 truncate">
                     {stat.value}
                   </p>
                   {stat.clickable}
@@ -339,25 +344,25 @@ function Dashboard() {
           onClick={() => setShowLowStockModal(false)}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-out animate-scale-in"
+            className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-out animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Modal */}
-            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-accent-50 to-white">
+            <div className="flex items-center justify-between p-4 md:p-6 border-b bg-gradient-to-r from-orange-50 to-white">
               <div className="flex items-center">
-                <div className="rounded-md p-2 bg-accent-500 text-white mr-3 animate-bounce-slow">
+                <div className="rounded-md p-2 bg-orange-500 text-white mr-3 animate-bounce-slow">
                   <MdInventory size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Produk Stok Rendah</h2>
-                  <p className="text-sm text-gray-500">
+                  <h2 className="text-lg md:text-xl font-semibold text-gray-900">Produk Stok Rendah</h2>
+                  <p className="text-xs md:text-sm text-gray-500">
                     {lowStockProducts.length} produk memerlukan restok
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowLowStockModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 transform"
+                className="text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 transform p-1"
                 aria-label="Tutup modal"
               >
                 <MdClose size={24} />
@@ -377,22 +382,22 @@ function Dashboard() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Gambar
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Nama Produk
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Kategori
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Stok
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Harga
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
                       </tr>
@@ -400,38 +405,38 @@ function Dashboard() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {lowStockProducts.map((product) => (
                         <tr key={product.id} className="hover:bg-gray-50 transition-colors duration-150">
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                             {product.imageUrl ? (
                               <img
                                 src={product.imageUrl}
                                 alt={product.name}
-                                className="w-12 h-12 object-cover rounded transition-transform duration-200 hover:scale-110"
+                                className="w-10 h-10 md:w-12 md:h-12 object-cover rounded transition-transform duration-200 hover:scale-110"
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
+                              <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
                                 T/A
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{product.name}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                             <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 transition-all duration-200 hover:bg-blue-200">
                               {product.category || 'Lainnya'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                             <span className={`text-sm font-semibold transition-all duration-200 ${
                               product.stock === 0 ? 'text-red-600 animate-pulse' : 'text-orange-600'
                             }`}>
                               {product.stock}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatRupiah(product.price)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full transition-all duration-200 ${
                               product.stock === 0 
                                 ? 'bg-red-100 text-red-800 hover:bg-red-200' 
@@ -452,14 +457,14 @@ function Dashboard() {
             <div className="p-4 border-t bg-gray-50 flex justify-end space-x-3">
               <button
                 onClick={() => setShowLowStockModal(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-all duration-200 hover:scale-105 active:scale-95"
+                className="px-3 md:px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 Tutup
               </button>
               <Link
                 to="/products"
                 onClick={() => setShowLowStockModal(false)}
-                className="px-4 py-2 bg-primary-500 text-white rounded hover:bg-primary-600 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
+                className="px-3 md:px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
               >
                 Kelola Produk
               </Link>
@@ -470,27 +475,27 @@ function Dashboard() {
 
       {/* Penjualan Terbaru */}
       <ErrorBoundary>
-        <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-          <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">Penjualan Terbaru</h2>
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="p-4 md:p-6 border-b">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Penjualan Terbaru</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ID Transaksi
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Pelanggan
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Item
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Total
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Waktu
                   </th>
                 </tr>
@@ -498,32 +503,32 @@ function Dashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan="5" className="px-4 md:px-6 py-4 text-center text-gray-500 text-sm">
                       Memuat data penjualan...
                     </td>
                   </tr>
                 ) : recentSales.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan="5" className="px-4 md:px-6 py-4 text-center text-gray-500 text-sm">
                       Tidak ada penjualan terbaru ditemukan
                     </td>
                   </tr>
                 ) : (
                   recentSales.map((sale) => (
                     <tr key={sale.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
                         #{sale.id?.substring(0, 8) || 'T/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">
                         {sale.customerName}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
                         {renderItems(sale.items)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium text-green-600">
                         {formatRupiah(sale.total || 0)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">
                         {formatTimestamp(sale.timestamp)}
                       </td>
                     </tr>
@@ -535,7 +540,7 @@ function Dashboard() {
           <div className="p-4 border-t text-right">
             <Link
               to="/reports"
-              className="text-primary-500 hover:text-primary-600 text-sm font-medium"
+              className="text-blue-500 hover:text-blue-600 text-sm font-medium"
               aria-label="Lihat semua penjualan"
             >
               Lihat semua penjualan →
@@ -543,38 +548,8 @@ function Dashboard() {
           </div>
         </div>
       </ErrorBoundary>
-
-      {/* Tautan Cepat */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Aksi Cepat</h2>
-        </div>
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link
-            to="/cashier"
-            className="btn bg-primary-500 text-white text-center hover:bg-primary-600"
-            aria-label="Buat penjualan baru"
-          >
-            Penjualan Baru
-          </Link>
-          <Link
-            to="/products"
-            className="btn bg-secondary-500 text-white text-center hover:bg-secondary-600"
-            aria-label="Kelola produk"
-          >
-            Kelola Produk
-          </Link>
-          <Link
-            to="/reports"
-            className="btn bg-gray-700 text-white text-center hover:bg-gray-800"
-            aria-label="Lihat laporan"
-          >
-            Lihat Laporan
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }
 
-export default Dashboard;
+export default Dashboard; 
