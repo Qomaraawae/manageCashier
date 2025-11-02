@@ -18,12 +18,10 @@ function Sidebar({ isOpen, onClose }) {
 
   // State untuk swipe gesture
   const [touchStart, setTouchStart] = useState(null)
-  const [touchEnd, setTouchEnd] = useState(null)
+  const [touchCurrent, setTouchCurrent] = useState(null)
   const [translateX, setTranslateX] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
-
-  // Minimum jarak swipe untuk menutup sidebar (dalam px)
-  const minSwipeDistance = 50
+  const [startTime, setStartTime] = useState(null)
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: <MdDashboard size={24} /> },
@@ -43,44 +41,55 @@ function Sidebar({ isOpen, onClose }) {
 
   // Touch event handlers untuk mobile
   const onTouchStart = (e) => {
-    setTouchEnd(null)
     setTouchStart(e.targetTouches[0].clientX)
+    setTouchCurrent(e.targetTouches[0].clientX)
+    setStartTime(Date.now())
     setIsDragging(true)
   }
 
   const onTouchMove = (e) => {
-    if (!touchStart) return
+    if (!touchStart || !isDragging) return
     
     const currentTouch = e.targetTouches[0].clientX
-    const diff = touchStart - currentTouch
+    const diff = currentTouch - touchStart
 
-    // Hanya izinkan swipe ke kiri (menutup)
-    if (diff > 0) {
-      setTranslateX(-diff)
-      setTouchEnd(currentTouch)
+    // Geser bebas, tapi hanya ke kiri (nilai negatif)
+    if (diff <= 0) {
+      setTranslateX(diff)
     } else {
-      setTranslateX(0)
+      // Resistance effect saat geser ke kanan
+      setTranslateX(diff * 0.3)
     }
+    
+    setTouchCurrent(currentTouch)
   }
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) {
+    if (!touchStart || !touchCurrent || !isDragging) {
       setIsDragging(false)
       setTranslateX(0)
       return
     }
 
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > minSwipeDistance
+    const distance = touchCurrent - touchStart
+    const duration = Date.now() - startTime
+    const velocity = Math.abs(distance) / duration // px per ms
 
-    if (isLeftSwipe) {
+    // Tutup sidebar jika:
+    // 1. Digeser lebih dari 40% lebar sidebar, ATAU
+    // 2. Velocity tinggi (swipe cepat ke kiri)
+    const sidebarWidth = sidebarRef.current?.offsetWidth || 320
+    const threshold = sidebarWidth * 0.4
+
+    if (distance < -threshold || (velocity > 0.5 && distance < 0)) {
       onClose()
     }
 
     setTranslateX(0)
     setIsDragging(false)
     setTouchStart(null)
-    setTouchEnd(null)
+    setTouchCurrent(null)
+    setStartTime(null)
   }
 
   // Mouse event handlers untuk desktop
@@ -88,8 +97,9 @@ function Sidebar({ isOpen, onClose }) {
     // Hanya aktifkan di mobile (md:hidden)
     if (window.innerWidth >= 768) return
     
-    setTouchEnd(null)
     setTouchStart(e.clientX)
+    setTouchCurrent(e.clientX)
+    setStartTime(Date.now())
     setIsDragging(true)
   }
 
@@ -97,35 +107,42 @@ function Sidebar({ isOpen, onClose }) {
     if (!touchStart || !isDragging || window.innerWidth >= 768) return
     
     const currentPos = e.clientX
-    const diff = touchStart - currentPos
+    const diff = currentPos - touchStart
 
-    // Hanya izinkan swipe ke kiri (menutup)
-    if (diff > 0) {
-      setTranslateX(-diff)
-      setTouchEnd(currentPos)
+    // Geser bebas, tapi hanya ke kiri (nilai negatif)
+    if (diff <= 0) {
+      setTranslateX(diff)
     } else {
-      setTranslateX(0)
+      // Resistance effect saat geser ke kanan
+      setTranslateX(diff * 0.3)
     }
+    
+    setTouchCurrent(currentPos)
   }
 
   const onMouseUp = () => {
-    if (!touchStart || !touchEnd || window.innerWidth >= 768) {
+    if (!touchStart || !touchCurrent || !isDragging || window.innerWidth >= 768) {
       setIsDragging(false)
       setTranslateX(0)
       return
     }
 
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > minSwipeDistance
+    const distance = touchCurrent - touchStart
+    const duration = Date.now() - startTime
+    const velocity = Math.abs(distance) / duration
 
-    if (isLeftSwipe) {
+    const sidebarWidth = sidebarRef.current?.offsetWidth || 320
+    const threshold = sidebarWidth * 0.4
+
+    if (distance < -threshold || (velocity > 0.5 && distance < 0)) {
       onClose()
     }
 
     setTranslateX(0)
     setIsDragging(false)
     setTouchStart(null)
-    setTouchEnd(null)
+    setTouchCurrent(null)
+    setStartTime(null)
   }
 
   // Attach mouse events ke document saat dragging
@@ -139,7 +156,7 @@ function Sidebar({ isOpen, onClose }) {
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
     }
-  }, [isDragging, touchStart, touchEnd])
+  }, [isDragging, touchStart, touchCurrent])
 
   const handleLogout = async (e) => {
     e.preventDefault()
@@ -147,12 +164,23 @@ function Sidebar({ isOpen, onClose }) {
     onClose()
   }
 
+  // Hitung opacity backdrop berdasarkan posisi sidebar
+  const getBackdropOpacity = () => {
+    if (!isDragging || translateX >= 0) return 0.75
+    const sidebarWidth = sidebarRef.current?.offsetWidth || 320
+    const progress = Math.max(0, 1 + (translateX / sidebarWidth))
+    return 0.75 * progress
+  }
+
   return (
     <>
       {/* Mobile Sidebar Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden" 
+          className="fixed inset-0 z-40 bg-gray-600 md:hidden transition-opacity duration-200" 
+          style={{
+            opacity: getBackdropOpacity()
+          }}
           onClick={onClose}
           aria-hidden="true"
         ></div>
@@ -161,15 +189,15 @@ function Sidebar({ isOpen, onClose }) {
       {/* Sidebar */}
       <aside 
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 z-50 w-80 max-w-[95vw] bg-white shadow-xl transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-64 ${
-          isDragging ? '' : 'transition-transform'
+        className={`fixed inset-y-0 left-0 z-50 w-80 max-w-[95vw] bg-white shadow-xl md:relative md:translate-x-0 md:w-64 ${
+          isDragging ? '' : 'transition-transform duration-300 ease-out'
         } ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          isOpen ? '' : '-translate-x-full'
         }`}
         style={{
           transform: isOpen && window.innerWidth < 768
             ? `translateX(${translateX}px)` 
-            : undefined
+            : isOpen ? 'translateX(0)' : 'translateX(-100%)'
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -193,15 +221,6 @@ function Sidebar({ isOpen, onClose }) {
             <MdClose size={24} />
           </button>
         </div>
-
-        {/* Instruksi Swipe (hanya tampil di mobile) */}
-        {isOpen && (
-          <div className="p-3 bg-blue-50 border-b border-blue-100 md:hidden">
-            <p className="text-xs text-blue-600 text-center">
-              💡 Geser ke kiri untuk menutup
-            </p>
-          </div>
-        )}
         
         {/* Navigation Links */}
         <nav className="p-4">
@@ -245,25 +264,6 @@ function Sidebar({ isOpen, onClose }) {
             Sign Out
           </button>
         </div>
-
-        {/* Indikator Drag (hanya tampil saat dragging di mobile) */}
-        {isDragging && isOpen && (
-          <div className="fixed bottom-24 left-4 right-4 bg-blue-100 border border-blue-300 rounded-lg p-3 text-center shadow-lg md:hidden z-60 animate-pulse">
-            <p className="text-sm font-medium text-blue-700">
-              {Math.abs(translateX) > minSwipeDistance 
-                ? '✅ Lepas untuk menutup' 
-                : '👆 Geser lebih jauh'}
-            </p>
-            <div className="mt-2 w-full bg-blue-200 rounded-full h-2 overflow-hidden">
-              <div 
-                className="bg-blue-600 h-full transition-all duration-100"
-                style={{ 
-                  width: `${Math.min((Math.abs(translateX) / minSwipeDistance) * 100, 100)}%` 
-                }}
-              />
-            </div>
-          </div>
-        )}
       </aside>
     </>
   )
