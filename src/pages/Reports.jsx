@@ -148,7 +148,7 @@ function Reports() {
       ['LAPORAN PENJUALAN'],
       [],
       ['Tanggal Cetak', format(new Date(), 'dd MMMM yyyy, HH:mm', { locale: id })],
-      ['Filter', dateFilter === 'all' ? 'Semua Data' : dateFilter === 'today' ? 'Hari Ini' : dateFilter === 'week' ? '7 Hari Terakhir' : '30 Hari Terakhir'],
+      ['Filter', dateFilter === 'all' ? 'Semua' : dateFilter === 'today' ? 'Hari Ini' : dateFilter === 'week' ? '7 Hari Terakhir' : '30 Hari Terakhir'],
       ['Total Transaksi', filteredSales.length],
       ['Total Pendapatan', `Rp ${formatNumber(totalRevenue)}`],
       [],
