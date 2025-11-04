@@ -382,7 +382,7 @@ function Reports() {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Semua Data
+            Semua
           </button>
           <button
             onClick={() => setDateFilter('today')}
