@@ -394,7 +394,7 @@ function Cashier() {
                     disabled={product.stock === 0}
                     aria-label={`Tambah ${product.name} ke keranjang`}
                   >
-                    Tambah
+                    +
                   </button>
                 </div>
               ))}
