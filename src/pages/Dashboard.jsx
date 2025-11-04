@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { 
   MdPointOfSale, 
@@ -9,7 +9,7 @@ import {
   MdInsights, 
   MdClose
 } from 'react-icons/md';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import id from 'date-fns/locale/id';
 
 // Tambahkan CSS animasi khusus di head
@@ -104,7 +104,7 @@ function Dashboard() {
     lowStock: 0,
     dailySales: 0,
   });
-  const [recentSales, setRecentSales] = useState([]);
+  const [todaySales, setTodaySales] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -133,7 +133,7 @@ function Dashboard() {
         const jumlahStokRendah = produkStokRendah.length;
         setLowStockProducts(produkStokRendah);
 
-        // Ambil semua data penjualan untuk menghitung total penjualan dan penjualan harian
+        // Ambil semua data penjualan untuk menghitung total penjualan
         const refPenjualanSemua = collection(db, 'sales');
         const snapshotPenjualanSemua = await getDocs(refPenjualanSemua);
 
@@ -151,24 +151,23 @@ function Dashboard() {
         // Hitung total penjualan dari semua data
         const totalJumlahPenjualan = semuaPenjualan.reduce((sum, sale) => sum + sale.total, 0);
 
-        // Hitung penjualan hari ini dari semua data
+        // Dapatkan timestamp awal dan akhir hari ini
         const hariIni = new Date();
-        hariIni.setHours(0, 0, 0, 0);
+        const startToday = startOfDay(hariIni);
+        const endToday = endOfDay(hariIni);
 
-        const penjualanHariIni = semuaPenjualan.filter((sale) => {
-          const tanggalPenjualan = sale.timestamp?.toDate?.() || new Date(sale.timestamp);
-          tanggalPenjualan.setHours(0, 0, 0, 0);
-          return tanggalPenjualan.getTime() === hariIni.getTime();
-        });
+        // Query penjualan hari ini dengan filter timestamp
+        const refPenjualanHariIni = collection(db, 'sales');
+        const kueriPenjualanHariIni = query(
+          refPenjualanHariIni,
+          where('timestamp', '>=', startToday),
+          where('timestamp', '<=', endToday),
+          orderBy('timestamp', 'desc')
+        );
+        
+        const snapshotPenjualanHariIni = await getDocs(kueriPenjualanHariIni);
 
-        const jumlahPenjualanHariIni = penjualanHariIni.reduce((sum, sale) => sum + sale.total, 0);
-
-        // Ambil 5 penjualan terbaru untuk tabel
-        const refPenjualan = collection(db, 'sales');
-        const kueriPenjualan = query(refPenjualan, orderBy('timestamp', 'desc'), limit(5));
-        const snapshotPenjualan = await getDocs(kueriPenjualan);
-
-        const penjualanTerbaru = snapshotPenjualan.docs.map((doc) => {
+        const penjualanHariIni = snapshotPenjualanHariIni.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
@@ -179,6 +178,9 @@ function Dashboard() {
           };
         });
 
+        // Hitung total penjualan hari ini
+        const jumlahPenjualanHariIni = penjualanHariIni.reduce((sum, sale) => sum + sale.total, 0);
+
         setStats({
           totalSales: totalJumlahPenjualan,
           totalProducts: jumlahProduk,
@@ -186,7 +188,7 @@ function Dashboard() {
           dailySales: jumlahPenjualanHariIni,
         });
 
-        setRecentSales(penjualanTerbaru);
+        setTodaySales(penjualanHariIni);
         setError(null);
       } catch (err) {
         console.error('Gagal mengambil data dasbor:', err);
@@ -473,11 +475,21 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Penjualan Terbaru */}
+      {/* Penjualan Hari Ini */}
       <ErrorBoundary>
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-4 md:p-6 border-b">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Penjualan Terbaru</h2>
+          <div className="p-4 md:p-6 border-b flex items-center justify-between">
+            <div>
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Penjualan Hari Ini</h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1">
+                {format(new Date(), 'EEEE, dd MMMM yyyy', { locale: id })}
+              </p>
+            </div>
+            <div className="bg-blue-50 px-3 py-1 rounded-full">
+              <span className="text-sm font-semibold text-blue-600">
+                {todaySales.length} Transaksi
+              </span>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -507,14 +519,16 @@ function Dashboard() {
                       Memuat data penjualan...
                     </td>
                   </tr>
-                ) : recentSales.length === 0 ? (
+                ) : todaySales.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-4 md:px-6 py-4 text-center text-gray-500 text-sm">
-                      Tidak ada penjualan terbaru ditemukan
+                    <td colSpan="5" className="px-4 md:px-6 py-8 text-center text-gray-500">
+                      <MdPointOfSale size={48} className="mx-auto mb-4 text-gray-300" />
+                      <p className="text-sm font-medium">Belum ada penjualan hari ini</p>
+                      <p className="text-xs mt-1">Transaksi akan muncul di sini setelah ada penjualan</p>
                     </td>
                   </tr>
                 ) : (
-                  recentSales.map((sale) => (
+                  todaySales.map((sale) => (
                     <tr key={sale.id} className="hover:bg-gray-50">
                       <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
                         #{sale.id?.substring(0, 8) || 'T/A'}
@@ -537,13 +551,16 @@ function Dashboard() {
               </tbody>
             </table>
           </div>
-          <div className="p-4 border-t text-right">
+          <div className="p-4 border-t bg-gray-50 flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              Total Hari Ini: <span className="font-bold text-green-600">{formatRupiah(stats.dailySales)}</span>
+            </div>
             <Link
               to="/reports"
               className="text-blue-500 hover:text-blue-600 text-sm font-medium"
               aria-label="Lihat semua penjualan"
             >
-              Lihat semua penjualan →
+              Lihat semua laporan →
             </Link>
           </div>
         </div>
@@ -552,4 +569,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard; 
+export default Dashboard;
