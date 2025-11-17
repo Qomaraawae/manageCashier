@@ -3,9 +3,40 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { format } from 'date-fns';
 import id from 'date-fns/locale/id';
-import { MdOutlineSearch, MdDownload, MdRefresh, MdDateRange, MdPictureAsPdf } from 'react-icons/md';
+import { MdOutlineSearch, MdDownload, MdRefresh, MdDateRange, MdPictureAsPdf, MdCheckCircle, MdError, MdClose } from 'react-icons/md';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
+
+// Komponen Notifikasi
+const Notification = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
+        type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+      }`}>
+        {type === 'success' ? (
+          <MdCheckCircle size={24} />
+        ) : (
+          <MdError size={24} />
+        )}
+        <span className="font-medium">{message}</span>
+        <button
+          onClick={onClose}
+          className="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors"
+        >
+          <MdClose size={18} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // Fungsi untuk memformat angka ke Rupiah
 const formatRupiah = (value) => {
@@ -26,91 +57,97 @@ const formatNumber = (value) => {
 };
 
 // Fungsi untuk membuat nota PDF seperti struk Indomaret
-const generateReceiptPDF = (saleData) => {
-  const doc = new jsPDF({ format: 'a5' });
-  const pageWidth = doc.internal.pageSize.getWidth(); // 148mm
-  const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
-  const margin = 5;
-  const lineHeight = 5;
-  let y = margin;
+const generateReceiptPDF = (saleData, showNotification) => {
+  try {
+    const doc = new jsPDF({ format: 'a5' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 5;
+    const lineHeight = 5;
+    let y = margin;
 
-  // Header
-  doc.setFont('courier', 'normal');
-  doc.setFontSize(8);
-  doc.text('PT. NdugalRacing', margin, y);
-  y += lineHeight;
-  doc.text('Jl. WLRO No. 72, Sorosutan', margin, y);
-  y += lineHeight;
-  doc.text('NPWP 01.010.001.0-101.010', margin, y);
-  y += lineHeight;
-  doc.text('[LOGO]', pageWidth - margin - 20, margin, { align: 'right' });
-  y += lineHeight + 2;
-
-  // Informasi Lokasi dan Transaksi
-  const storeName = 'Point Stasiun Bojong Gede';
-  const storeCode = '082268255699';
-  const address = 'Dagaran, Sorosutan, Yogyakarta 55162';
-  doc.text(`${storeName} ${storeCode}`, margin, y);
-  y += lineHeight;
-  doc.text(address, margin, y);
-  y += lineHeight;
-  
-  const saleTimestamp = saleData.timestamp instanceof Date ? saleData.timestamp : saleData.timestamp.toDate();
-  const saleId = saleData.id || format(saleTimestamp, 'yyyyMMddHHmm');
-  const time = format(saleTimestamp, 'dd.MM.yy-HH:mm', { locale: id });
-  doc.text(`${time}  2.0.35 ${saleId}/KASIR/01`, margin, y);
-  y += lineHeight + 2;
-
-  doc.line(margin, y, pageWidth - margin, y);
-  y += lineHeight;
-
-  doc.setFontSize(8);
-  saleData.items.forEach((item) => {
-    const itemText = `${item.name}`;
-    const priceText = `${item.quantity} x ${formatRupiah(item.price)} = ${formatRupiah(item.price * item.quantity)}`;
-    doc.text(itemText, margin, y);
-    doc.text(priceText, pageWidth - margin - 40, y, { align: 'right' });
+    // Header
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(8);
+    doc.text('PT. NdugalRacing', margin, y);
     y += lineHeight;
+    doc.text('Jl. WLRO No. 72, Sorosutan', margin, y);
+    y += lineHeight;
+    doc.text('NPWP 01.010.001.0-101.010', margin, y);
+    y += lineHeight;
+    doc.text('[LOGO]', pageWidth - margin - 20, margin, { align: 'right' });
+    y += lineHeight + 2;
+
+    // Informasi Lokasi dan Transaksi
+    const storeName = 'Point Stasiun Bojong Gede';
+    const storeCode = '082268255699';
+    const address = 'Dagaran, Sorosutan, Yogyakarta 55162';
+    doc.text(`${storeName} ${storeCode}`, margin, y);
+    y += lineHeight;
+    doc.text(address, margin, y);
+    y += lineHeight;
+    
+    const saleTimestamp = saleData.timestamp instanceof Date ? saleData.timestamp : saleData.timestamp.toDate();
+    const saleId = saleData.id || format(saleTimestamp, 'yyyyMMddHHmm');
+    const time = format(saleTimestamp, 'dd.MM.yy-HH:mm', { locale: id });
+    doc.text(`${time}  2.0.35 ${saleId}/KASIR/01`, margin, y);
+    y += lineHeight + 2;
+
     doc.line(margin, y, pageWidth - margin, y);
     y += lineHeight;
-  });
 
-  doc.line(margin, y, pageWidth - margin, y);
-  y += lineHeight;
+    doc.setFontSize(8);
+    saleData.items.forEach((item) => {
+      const itemText = `${item.name}`;
+      const priceText = `${item.quantity} x ${formatRupiah(item.price)} = ${formatRupiah(item.price * item.quantity)}`;
+      doc.text(itemText, margin, y);
+      doc.text(priceText, pageWidth - margin - 40, y, { align: 'right' });
+      y += lineHeight;
+      doc.line(margin, y, pageWidth - margin, y);
+      y += lineHeight;
+    });
 
-  const total = saleData.total;
-  const cash = saleData.cashAmount;
-  const change = saleData.change;
-  const dpp = total / 1.11;
-  const ppn = total - dpp;
+    doc.line(margin, y, pageWidth - margin, y);
+    y += lineHeight;
 
-  doc.text('HARGA JUAL :', margin, y);
-  doc.text(formatRupiah(total), pageWidth - margin - 20, y, { align: 'right' });
-  y += lineHeight;
-  doc.text('TOTAL :', margin, y);
-  doc.text(formatRupiah(total), pageWidth - margin - 20, y, { align: 'right' });
-  y += lineHeight;
-  doc.text('TUNAI :', margin, y);
-  doc.text(formatRupiah(cash), pageWidth - margin - 20, y, { align: 'right' });
-  y += lineHeight;
-  doc.text('KEMBALI :', margin, y);
-  doc.text(formatRupiah(change), pageWidth - margin - 20, y, { align: 'right' });
-  y += lineHeight;
-  doc.text('PPN : DPP=' + formatRupiah(dpp.toFixed(0)) + ' PPN=' + formatRupiah(ppn.toFixed(0)), margin, y);
-  y += lineHeight + 2;
+    const total = saleData.total;
+    const cash = saleData.cashAmount;
+    const change = saleData.change;
+    const dpp = total / 1.11;
+    const ppn = total - dpp;
 
-  doc.line(margin, y, pageWidth - margin, y);
-  y += lineHeight;
+    doc.text('HARGA JUAL :', margin, y);
+    doc.text(formatRupiah(total), pageWidth - margin - 20, y, { align: 'right' });
+    y += lineHeight;
+    doc.text('TOTAL :', margin, y);
+    doc.text(formatRupiah(total), pageWidth - margin - 20, y, { align: 'right' });
+    y += lineHeight;
+    doc.text('TUNAI :', margin, y);
+    doc.text(formatRupiah(cash), pageWidth - margin - 20, y, { align: 'right' });
+    y += lineHeight;
+    doc.text('KEMBALI :', margin, y);
+    doc.text(formatRupiah(change), pageWidth - margin - 20, y, { align: 'right' });
+    y += lineHeight;
+    doc.text('PPN : DPP=' + formatRupiah(dpp.toFixed(0)) + ' PPN=' + formatRupiah(ppn.toFixed(0)), margin, y);
+    y += lineHeight + 2;
 
-  doc.text('TERIMA KASIH. SELAMAT BELANJA KEMBALI', margin, y);
-  y += lineHeight;
-  doc.text('===== LAYAMAN KONSUMEN MINIMARKET =====', margin, y);
-  y += lineHeight;
-  doc.text('SMS 0816 000 220 00  Call 150060', margin, y);
-  y += lineHeight;
-  doc.text('EMAIL: luthfikomara04@gmail.com', margin, y);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += lineHeight;
 
-  doc.save(`nota_${saleId}.pdf`);
+    doc.text('TERIMA KASIH. SELAMAT BELANJA KEMBALI', margin, y);
+    y += lineHeight;
+    doc.text('===== LAYAMAN KONSUMEN MINIMARKET =====', margin, y);
+    y += lineHeight;
+    doc.text('SMS 0816 000 220 00  Call 150060', margin, y);
+    y += lineHeight;
+    doc.text('EMAIL: luthfikomara04@gmail.com', margin, y);
+
+    doc.save(`nota_${saleId}.pdf`);
+    showNotification('PDF berhasil diunduh!', 'success');
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    showNotification('Gagal mengunduh PDF. Silakan coba lagi.', 'error');
+  }
 };
 
 function Reports() {
@@ -122,6 +159,12 @@ function Reports() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  // Fungsi untuk menampilkan notifikasi
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
+  };
 
   // Ambil data penjualan dari Firestore
   useEffect(() => {
@@ -222,78 +265,85 @@ function Reports() {
 
   // Fungsi untuk ekspor ke Excel dengan format yang rapi
   const exportToExcel = () => {
-    const workbook = XLSX.utils.book_new();
-    
-    const reportHeader = [
-      ['LAPORAN PENJUALAN'],
-      [],
-      ['Tanggal Cetak', format(new Date(), 'dd MMMM yyyy, HH:mm', { locale: id })],
-      ['Filter', dateFilter === 'all' ? 'Semua' : dateFilter === 'today' ? 'Hari Ini' : dateFilter === 'week' ? '7 Hari Terakhir' : '30 Hari Terakhir'],
-      ['Total Transaksi', filteredSales.length],
-      ['Total Pendapatan', `Rp ${formatNumber(totalRevenue)}`],
-      [],
-      [],
-    ];
-
-    const excelData = filteredSales.map((sale, index) => {
-      const itemsList = Array.isArray(sale.items) 
-        ? sale.items.map(item => `${item.quantity}x ${item.name} @ Rp ${formatNumber(item.price)}`).join('; ')
-        : '-';
+    try {
+      const workbook = XLSX.utils.book_new();
       
-      const totalItems = Array.isArray(sale.items)
-        ? sale.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
-        : 0;
+      const reportHeader = [
+        ['LAPORAN PENJUALAN'],
+        [],
+        ['Tanggal Cetak', format(new Date(), 'dd MMMM yyyy, HH:mm', { locale: id })],
+        ['Filter', dateFilter === 'all' ? 'Semua' : dateFilter === 'today' ? 'Hari Ini' : dateFilter === 'week' ? '7 Hari Terakhir' : '30 Hari Terakhir'],
+        ['Total Transaksi', filteredSales.length],
+        ['Total Pendapatan', `Rp ${formatNumber(totalRevenue)}`],
+        [],
+        [],
+      ];
 
-      return {
-        'No': index + 1,
-        'ID Transaksi': sale.id,
-        'Pelanggan': sale.customerName,
-        'Tanggal': format(
-          sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(),
-          'dd/MM/yyyy',
-          { locale: id }
-        ),
-        'Waktu': format(
-          sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(),
-          'HH:mm',
-          { locale: id }
-        ),
-        'Detail Item': itemsList,
-        'Jumlah Item': totalItems,
-        'Total': sale.total,
-        'Tunai': sale.cashAmount || 0,
-        'Kembalian': sale.change || 0,
-      };
-    });
+      const excelData = filteredSales.map((sale, index) => {
+        const itemsList = Array.isArray(sale.items) 
+          ? sale.items.map(item => `${item.quantity}x ${item.name} @ Rp ${formatNumber(item.price)}`).join('; ')
+          : '-';
+        
+        const totalItems = Array.isArray(sale.items)
+          ? sale.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+          : 0;
 
-    const worksheet = XLSX.utils.aoa_to_sheet(reportHeader);
-    XLSX.utils.sheet_add_json(worksheet, excelData, { 
-      origin: `A${reportHeader.length + 1}`,
-      skipHeader: false 
-    });
-
-    const getMaxWidth = (data, header) => {
-      let maxWidths = new Array(Object.keys(excelData[0] || {}).length).fill(10);
-      Object.keys(excelData[0] || {}).forEach((key, idx) => {
-        maxWidths[idx] = Math.max(maxWidths[idx], key.length);
+        return {
+          'No': index + 1,
+          'ID Transaksi': sale.id,
+          'Pelanggan': sale.customerName,
+          'Tanggal': format(
+            sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(),
+            'dd/MM/yyyy',
+            { locale: id }
+          ),
+          'Waktu': format(
+            sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(),
+            'HH:mm',
+            { locale: id }
+          ),
+          'Detail Item': itemsList,
+          'Jumlah Item': totalItems,
+          'Total': sale.total,
+          'Tunai': sale.cashAmount || 0,
+          'Kembalian': sale.change || 0,
+        };
       });
-      excelData.forEach(row => {
-        Object.values(row).forEach((val, idx) => {
-          const length = String(val).length;
-          maxWidths[idx] = Math.max(maxWidths[idx], length);
+
+      const worksheet = XLSX.utils.aoa_to_sheet(reportHeader);
+      XLSX.utils.sheet_add_json(worksheet, excelData, { 
+        origin: `A${reportHeader.length + 1}`,
+        skipHeader: false 
+      });
+
+      const getMaxWidth = (data, header) => {
+        let maxWidths = new Array(Object.keys(excelData[0] || {}).length).fill(10);
+        Object.keys(excelData[0] || {}).forEach((key, idx) => {
+          maxWidths[idx] = Math.max(maxWidths[idx], key.length);
         });
-      });
-      return maxWidths.map(w => ({ wch: Math.min(Math.max(w + 2, 10), 60) }));
-    };
+        excelData.forEach(row => {
+          Object.values(row).forEach((val, idx) => {
+            const length = String(val).length;
+            maxWidths[idx] = Math.max(maxWidths[idx], length);
+          });
+        });
+        return maxWidths.map(w => ({ wch: Math.min(Math.max(w + 2, 10), 60) }));
+      };
 
-    worksheet['!cols'] = getMaxWidth(excelData, reportHeader);
-    if (!worksheet['!merges']) worksheet['!merges'] = [];
-    worksheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } });
+      worksheet['!cols'] = getMaxWidth(excelData, reportHeader);
+      if (!worksheet['!merges']) worksheet['!merges'] = [];
+      worksheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } });
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Penjualan');
-    const today = format(new Date(), 'yyyy-MM-dd_HHmm');
-    const fileName = `Laporan_Penjualan_${today}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Penjualan');
+      const today = format(new Date(), 'yyyy-MM-dd_HHmm');
+      const fileName = `Laporan_Penjualan_${today}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      showNotification('Excel berhasil diunduh!', 'success');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      showNotification('Gagal mengunduh Excel. Silakan coba lagi.', 'error');
+    }
   };
 
   if (loading) {
@@ -312,6 +362,15 @@ function Reports() {
 
   return (
     <div className="animate-fade-in p-6">
+      {/* Notifikasi */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Laporan Penjualan</h1>
         <div className="flex flex-wrap gap-2 relative">
@@ -540,7 +599,7 @@ function Reports() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
-                          onClick={() => generateReceiptPDF(sale)}
+                          onClick={() => generateReceiptPDF(sale, showNotification)}
                           className="inline-flex items-center px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium shadow-sm hover:shadow-md"
                           aria-label={`Download PDF untuk transaksi ${sale.id}`}
                           title="Download Struk PDF"
@@ -571,6 +630,22 @@ function Reports() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes slide-in-right {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
