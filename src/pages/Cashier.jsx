@@ -18,41 +18,53 @@ const Notification = ({ message, type, onClose }) => {
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <MdCheckCircle size={24} />;
+        return <MdCheckCircle size={26} className="text-white" />;
       case 'error':
-        return <MdError size={24} />;
+        return <MdError size={26} className="text-white" />;
       case 'warning':
-        return <MdWarning size={24} />;
+        return <MdWarning size={26} className="text-white" />;
       default:
-        return <MdCheckCircle size={24} />;
+        return <MdCheckCircle size={26} className="text-white" />;
     }
   };
 
+  // Semua jenis notifikasi pakai warna hijau (kecuali error tetap merah biar kelihatan)
   const getColorClasses = () => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-500 text-white';
-      case 'error':
-        return 'bg-red-500 text-white';
-      case 'warning':
-        return 'bg-yellow-500 text-white';
-      default:
-        return 'bg-blue-500 text-white';
+    if (type === 'error') {
+      return 'bg-red-600 text-white';
     }
+    if (type === 'warning') {
+      return 'bg-yellow-500 text-gray-900';
+    }
+    return 'bg-green-600 text-white'; // ← HIJAU untuk success & info
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${getColorClasses()}`}>
-        {getIcon()}
-        <span className="font-medium">{message}</span>
-        <button
-          onClick={onClose}
-          className="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors"
-          aria-label="Tutup notifikasi"
-        >
-          <MdClose size={18} />
-        </button>
+    <div className="fixed inset-x-0 top-4 sm:top-6 z-50 flex justify-center pointer-events-none px-4">
+      <div
+        className={`
+          pointer-events-auto w-full max-w-md
+          rounded-2xl shadow-2xl
+          ${getColorClasses()}
+          animate-slide-down-fade
+          border border-white/20
+        `}
+      >
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            {getIcon()}
+            <span className="font-semibold text-base sm:text-lg">
+              {message}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-white/20 transition-all"
+            aria-label="Tutup notifikasi"
+          >
+            <MdClose size={22} className="text-white" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -226,7 +238,7 @@ function Cashier() {
             : item
         );
       }
-      showNotification(`${product.name} ditambahkan ke keranjang`, 'success');
+      showNotification(`item ditambahkan ke keranjang`, 'success');
       return [...prevCart, { ...product, quantity: 1 }];
     });
   };
@@ -353,12 +365,17 @@ function Cashier() {
     <div className="animate-fade-in p-6">
       {/* Notifikasi */}
       {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type}
-          onClose={() => setNotification(null)}
-        />
-      )}
+  <div className="fixed inset-0 pointer-events-none z-50">
+    <div className="absolute inset-x-4 top-4 flex flex-col items-center gap-3 sm:items-end">
+      <Notification
+        key={notification.message + Date.now()} // agar animasi jalan tiap notif baru
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(null)}
+      />
+    </div>
+  </div>
+)}
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Kasir</h1>
       
@@ -477,7 +494,7 @@ function Cashier() {
                     disabled={product.stock === 0}
                     aria-label={`Tambah ${product.name} ke keranjang`}
                   >
-                    {product.stock === 0 ? 'Habis' : 'Tambah'}
+                    {product.stock === 0 ? 'Habis' : '+'}
                   </button>
                 </div>
               ))}
@@ -617,21 +634,22 @@ function Cashier() {
         </div>
       </div>
 
-      <style>{`
-        @keyframes slide-in-right {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        .animate-slide-in-right {
-          animation: slide-in-right 0.3s ease-out;
-        }
-      `}</style>
+      <style jsx>{`
+  @keyframes slide-down-fade {
+    from {
+      transform: translateY(-40px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-down-fade {
+    animation: slide-down-fade 0.4s ease-out forwards;
+  }
+`}</style>
     </div>
   );
 }
