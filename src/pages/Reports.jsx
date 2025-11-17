@@ -3,8 +3,9 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { format } from 'date-fns';
 import id from 'date-fns/locale/id';
-import { MdOutlineSearch, MdDownload, MdRefresh, MdDateRange } from 'react-icons/md';
+import { MdOutlineSearch, MdDownload, MdRefresh, MdDateRange, MdPictureAsPdf } from 'react-icons/md';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
 
 // Fungsi untuk memformat angka ke Rupiah
 const formatRupiah = (value) => {
@@ -24,11 +25,99 @@ const formatNumber = (value) => {
   }).format(value);
 };
 
+// Fungsi untuk membuat nota PDF seperti struk Indomaret
+const generateReceiptPDF = (saleData) => {
+  const doc = new jsPDF({ format: 'a5' });
+  const pageWidth = doc.internal.pageSize.getWidth(); // 148mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
+  const margin = 5;
+  const lineHeight = 5;
+  let y = margin;
+
+  // Header
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(8);
+  doc.text('PT. NdugalRacing', margin, y);
+  y += lineHeight;
+  doc.text('Jl. WLRO No. 72, Sorosutan', margin, y);
+  y += lineHeight;
+  doc.text('NPWP 01.010.001.0-101.010', margin, y);
+  y += lineHeight;
+  doc.text('[LOGO]', pageWidth - margin - 20, margin, { align: 'right' });
+  y += lineHeight + 2;
+
+  // Informasi Lokasi dan Transaksi
+  const storeName = 'Point Stasiun Bojong Gede';
+  const storeCode = '082268255699';
+  const address = 'Dagaran, Sorosutan, Yogyakarta 55162';
+  doc.text(`${storeName} ${storeCode}`, margin, y);
+  y += lineHeight;
+  doc.text(address, margin, y);
+  y += lineHeight;
+  
+  const saleTimestamp = saleData.timestamp instanceof Date ? saleData.timestamp : saleData.timestamp.toDate();
+  const saleId = saleData.id || format(saleTimestamp, 'yyyyMMddHHmm');
+  const time = format(saleTimestamp, 'dd.MM.yy-HH:mm', { locale: id });
+  doc.text(`${time}  2.0.35 ${saleId}/KASIR/01`, margin, y);
+  y += lineHeight + 2;
+
+  doc.line(margin, y, pageWidth - margin, y);
+  y += lineHeight;
+
+  doc.setFontSize(8);
+  saleData.items.forEach((item) => {
+    const itemText = `${item.name}`;
+    const priceText = `${item.quantity} x ${formatRupiah(item.price)} = ${formatRupiah(item.price * item.quantity)}`;
+    doc.text(itemText, margin, y);
+    doc.text(priceText, pageWidth - margin - 40, y, { align: 'right' });
+    y += lineHeight;
+    doc.line(margin, y, pageWidth - margin, y);
+    y += lineHeight;
+  });
+
+  doc.line(margin, y, pageWidth - margin, y);
+  y += lineHeight;
+
+  const total = saleData.total;
+  const cash = saleData.cashAmount;
+  const change = saleData.change;
+  const dpp = total / 1.11;
+  const ppn = total - dpp;
+
+  doc.text('HARGA JUAL :', margin, y);
+  doc.text(formatRupiah(total), pageWidth - margin - 20, y, { align: 'right' });
+  y += lineHeight;
+  doc.text('TOTAL :', margin, y);
+  doc.text(formatRupiah(total), pageWidth - margin - 20, y, { align: 'right' });
+  y += lineHeight;
+  doc.text('TUNAI :', margin, y);
+  doc.text(formatRupiah(cash), pageWidth - margin - 20, y, { align: 'right' });
+  y += lineHeight;
+  doc.text('KEMBALI :', margin, y);
+  doc.text(formatRupiah(change), pageWidth - margin - 20, y, { align: 'right' });
+  y += lineHeight;
+  doc.text('PPN : DPP=' + formatRupiah(dpp.toFixed(0)) + ' PPN=' + formatRupiah(ppn.toFixed(0)), margin, y);
+  y += lineHeight + 2;
+
+  doc.line(margin, y, pageWidth - margin, y);
+  y += lineHeight;
+
+  doc.text('TERIMA KASIH. SELAMAT BELANJA KEMBALI', margin, y);
+  y += lineHeight;
+  doc.text('===== LAYAMAN KONSUMEN MINIMARKET =====', margin, y);
+  y += lineHeight;
+  doc.text('SMS 0816 000 220 00  Call 150060', margin, y);
+  y += lineHeight;
+  doc.text('EMAIL: luthfikomara04@gmail.com', margin, y);
+
+  doc.save(`nota_${saleId}.pdf`);
+};
+
 function Reports() {
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month
+  const [dateFilter, setDateFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -58,7 +147,6 @@ function Reports() {
         setSales(dataPenjualan);
         setFilteredSales(dataPenjualan);
 
-        // Hitung total pendapatan dan jumlah item
         const pendapatan = dataPenjualan.reduce((sum, sale) => sum + sale.total, 0);
         const jumlahItem = dataPenjualan.reduce((sum, sale) => {
           return sum + (Array.isArray(sale.items) ? sale.items.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0) : 0);
@@ -88,17 +176,14 @@ function Reports() {
         case 'today':
           const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
           return saleDateOnly.getTime() === today.getTime();
-        
         case 'week':
           const weekAgo = new Date(today);
           weekAgo.setDate(weekAgo.getDate() - 7);
           return saleDate >= weekAgo;
-        
         case 'month':
           const monthAgo = new Date(today);
           monthAgo.setMonth(monthAgo.getMonth() - 1);
           return saleDate >= monthAgo;
-        
         default:
           return true;
       }
@@ -108,11 +193,8 @@ function Reports() {
   // Filter penjualan berdasarkan kata kunci pencarian dan tanggal
   useEffect(() => {
     let filtered = sales;
-
-    // Filter berdasarkan tanggal
     filtered = filterByDate(filtered, dateFilter);
 
-    // Filter berdasarkan pencarian
     if (searchTerm !== '') {
       filtered = filtered.filter((sale) =>
         sale.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -122,7 +204,6 @@ function Reports() {
 
     setFilteredSales(filtered);
 
-    // Update total revenue dan items berdasarkan filter
     const pendapatan = filtered.reduce((sum, sale) => sum + sale.total, 0);
     const jumlahItem = filtered.reduce((sum, sale) => {
       return sum + (Array.isArray(sale.items) ? sale.items.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0) : 0);
@@ -143,7 +224,6 @@ function Reports() {
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
     
-    // Header untuk laporan dengan format yang lebih baik
     const reportHeader = [
       ['LAPORAN PENJUALAN'],
       [],
@@ -155,7 +235,6 @@ function Reports() {
       [],
     ];
 
-    // Data transaksi
     const excelData = filteredSales.map((sale, index) => {
       const itemsList = Array.isArray(sale.items) 
         ? sale.items.map(item => `${item.quantity}x ${item.name} @ Rp ${formatNumber(item.price)}`).join('; ')
@@ -187,121 +266,36 @@ function Reports() {
       };
     });
 
-    // Buat worksheet dari header
     const worksheet = XLSX.utils.aoa_to_sheet(reportHeader);
-    
-    // Tambahkan data transaksi
     XLSX.utils.sheet_add_json(worksheet, excelData, { 
       origin: `A${reportHeader.length + 1}`,
       skipHeader: false 
     });
 
-    // Hitung lebar kolom otomatis berdasarkan konten
     const getMaxWidth = (data, header) => {
-      const headerRow = reportHeader.length + 1;
       let maxWidths = new Array(Object.keys(excelData[0] || {}).length).fill(10);
-      
-      // Cek header
       Object.keys(excelData[0] || {}).forEach((key, idx) => {
         maxWidths[idx] = Math.max(maxWidths[idx], key.length);
       });
-      
-      // Cek semua data
       excelData.forEach(row => {
         Object.values(row).forEach((val, idx) => {
           const length = String(val).length;
           maxWidths[idx] = Math.max(maxWidths[idx], length);
         });
       });
-      
-      // Tambahkan sedikit padding dan batasi maksimal
       return maxWidths.map(w => ({ wch: Math.min(Math.max(w + 2, 10), 60) }));
     };
 
-    // Set lebar kolom dengan auto-fit
     worksheet['!cols'] = getMaxWidth(excelData, reportHeader);
-
-    // Merge cells untuk judul
     if (!worksheet['!merges']) worksheet['!merges'] = [];
-    worksheet['!merges'].push(
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } } // Merge judul
-    );
+    worksheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } });
 
-    // Format styling untuk header
-    const range = XLSX.utils.decode_range(worksheet['!ref']);
-    
-    // Style untuk judul dan info header
-    for (let R = 0; R <= 6; R++) {
-      for (let C = 0; C <= 1; C++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-        if (!worksheet[cellAddress]) continue;
-        
-        if (R === 0) {
-          // Judul bold dan besar
-          worksheet[cellAddress].s = {
-            font: { bold: true, sz: 16 },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        } else if (R >= 2 && R <= 5 && C === 0) {
-          // Label (kolom A) bold
-          worksheet[cellAddress].s = {
-            font: { bold: true },
-            alignment: { horizontal: 'left', vertical: 'center' }
-          };
-        }
-      }
-    }
-
-    // Style untuk header tabel (bold dan background)
-    const headerRowIndex = reportHeader.length;
-    for (let C = 0; C <= 9; C++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: headerRowIndex, c: C });
-      if (worksheet[cellAddress]) {
-        worksheet[cellAddress].s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: "F3F4F6" } },
-          alignment: { horizontal: 'center', vertical: 'center' }
-        };
-      }
-    }
-
-    // Format angka dengan pemisah ribuan untuk kolom Total, Tunai, Kembalian
-    for (let R = headerRowIndex + 1; R <= range.e.r; R++) {
-      // Total (kolom H)
-      const totalCell = XLSX.utils.encode_cell({ r: R, c: 7 });
-      if (worksheet[totalCell] && typeof worksheet[totalCell].v === 'number') {
-        worksheet[totalCell].z = '#,##0';
-      }
-      
-      // Tunai (kolom I)
-      const tunaiCell = XLSX.utils.encode_cell({ r: R, c: 8 });
-      if (worksheet[tunaiCell] && typeof worksheet[tunaiCell].v === 'number') {
-        worksheet[tunaiCell].z = '#,##0';
-      }
-      
-      // Kembalian (kolom J)
-      const kembalianCell = XLSX.utils.encode_cell({ r: R, c: 9 });
-      if (worksheet[kembalianCell] && typeof worksheet[kembalianCell].v === 'number') {
-        worksheet[kembalianCell].z = '#,##0';
-      }
-    }
-
-    // Set row height untuk judul
-    if (!worksheet['!rows']) worksheet['!rows'] = [];
-    worksheet['!rows'][0] = { hpt: 25 }; // Tinggi baris judul
-
-    // Tambahkan worksheet ke workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Penjualan');
-
-    // Generate nama file dengan tanggal
     const today = format(new Date(), 'yyyy-MM-dd_HHmm');
     const fileName = `Laporan_Penjualan_${today}.xlsx`;
-
-    // Download file
     XLSX.writeFile(workbook, fileName);
   };
 
-  // Tampilkan pesan loading saat data diambil
   if (loading) {
     return (
       <div className="animate-fade-in p-6">
@@ -338,7 +332,6 @@ function Reports() {
             <span>Reset</span>
           </button>
 
-          {/* Popover Konfirmasi */}
           {showResetConfirm && (
             <>
               <div 
@@ -482,12 +475,15 @@ function Reports() {
                 <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Total
                 </th>
+                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredSales.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
+                  <td colSpan="7" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <MdOutlineSearch size={48} className="mb-3" />
                       <p className="text-gray-500 font-medium">Tidak ada data penjualan</p>
@@ -541,6 +537,17 @@ function Reports() {
                         <span className="text-sm font-semibold text-green-600">
                           {formatRupiah(sale.total)}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => generateReceiptPDF(sale)}
+                          className="inline-flex items-center px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                          aria-label={`Download PDF untuk transaksi ${sale.id}`}
+                          title="Download Struk PDF"
+                        >
+                          <MdPictureAsPdf size={16} className="mr-1" />
+                          PDF
+                        </button>
                       </td>
                     </tr>
                   );
