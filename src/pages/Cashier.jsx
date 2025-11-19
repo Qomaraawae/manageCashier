@@ -7,13 +7,13 @@ import jsPDF from 'jspdf';
 import { MdSearch, MdClose, MdCheckCircle, MdError, MdWarning } from 'react-icons/md';
 
 // Komponen Notifikasi
-const Notification = ({ message, type, onClose }) => {
+const Notification = ({ message, type, onClose, id }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
     }, 4000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [id, onClose]); // Tambahkan id sebagai dependency
 
   const getIcon = () => {
     switch (type) {
@@ -28,7 +28,6 @@ const Notification = ({ message, type, onClose }) => {
     }
   };
 
-  // Semua jenis notifikasi pakai warna hijau (kecuali error tetap merah biar kelihatan)
   const getColorClasses = () => {
     if (type === 'error') {
       return 'bg-red-600 text-white';
@@ -36,12 +35,13 @@ const Notification = ({ message, type, onClose }) => {
     if (type === 'warning') {
       return 'bg-yellow-500 text-gray-900';
     }
-    return 'bg-green-600 text-white'; // ← HIJAU untuk success & info
+    return 'bg-green-600 text-white';
   };
 
   return (
     <div className="fixed inset-x-0 top-4 sm:top-6 z-50 flex justify-center pointer-events-none px-4">
       <div
+        key={id} 
         className={`
           pointer-events-auto w-full max-w-md
           rounded-2xl shadow-2xl
@@ -184,7 +184,12 @@ function Cashier() {
 
   // Fungsi untuk menampilkan notifikasi
   const showNotification = (message, type) => {
-    setNotification({ message, type });
+    const newNotification = { 
+      message, 
+      type, 
+      id: Date.now() // Generate unique ID untuk setiap notifikasi
+    };
+    setNotification(newNotification);
   };
 
   // Ambil daftar produk dari Firestore
@@ -228,7 +233,7 @@ function Cashier() {
       const existingItem = prevCart.find(item => item.id === product.id);
       if (existingItem) {
         if (existingItem.quantity >= product.stock) {
-          showNotification(`Stok ${product.name} tidak cukup.`, 'warning');
+          showNotification(`Stok ${product.name} tidak cukup. Maksimal: ${product.stock}`, 'warning');
           return prevCart;
         }
         showNotification(`${product.name} ditambahkan ke keranjang`, 'success');
@@ -238,7 +243,7 @@ function Cashier() {
             : item
         );
       }
-      showNotification(`item ditambahkan ke keranjang`, 'success');
+      showNotification(`${product.name} ditambahkan ke keranjang`, 'success');
       return [...prevCart, { ...product, quantity: 1 }];
     });
   };
@@ -278,12 +283,33 @@ function Cashier() {
     setCashAmount(amount.toString());
   };
 
-  // Selesaikan transaksi
+  // Selesaikan transaksi dengan VALIDASI STOK
   const completeTransaction = async () => {
     if (cart.length === 0) {
       showNotification('Keranjang kosong. Tambahkan produk terlebih dahulu.', 'warning');
       return;
     }
+
+    // ========== VALIDASI STOK SEBELUM PEMBAYARAN ==========
+    const stockIssues = [];
+    for (const item of cart) {
+      const product = products.find(p => p.id === item.id);
+      if (!product) {
+        stockIssues.push(`Produk ${item.name} tidak ditemukan`);
+      } else if (product.stock < item.quantity) {
+        stockIssues.push(`${item.name}: stok tidak cukup (tersedia: ${product.stock}, diminta: ${item.quantity})`);
+      }
+    }
+
+    // JIKA ADA MASALAH STOK, HENTIKAN TRANSAKSI
+    if (stockIssues.length > 0) {
+      showNotification(
+        `Tidak bisa melakukan pembayaran! ${stockIssues[0]}. Silakan kurangi jumlah produk.`,
+        'error'
+      );
+      return;
+    }
+    // ========== AKHIR VALIDASI STOK ==========
 
     const total = calculateTotal();
     const cash = parseInt(cashAmount) || 0;
@@ -296,15 +322,6 @@ function Cashier() {
     const change = cash - total;
 
     try {
-      // Validasi stok
-      for (const item of cart) {
-        const product = products.find(p => p.id === item.id);
-        if (!product || product.stock < item.quantity) {
-          showNotification(`Stok ${item.name} tidak cukup. Sisa stok: ${product?.stock || 0}.`, 'error');
-          return;
-        }
-      }
-
       const saleData = {
         customerName: customerName || 'Pembeli Langsung',
         items: cart.map(item => ({
@@ -319,11 +336,11 @@ function Cashier() {
         timestamp: new Date(),
       };
 
-      // Simpan transaksi
+      // Simpan transaksi ke Firestore
       const saleRef = await addDoc(collection(db, 'sales'), saleData);
       saleData.saleId = saleRef.id;
 
-      // Update stok produk
+      // Update stok produk di Firestore
       for (const item of cart) {
         const productRef = doc(db, 'products', item.id);
         const product = products.find(p => p.id === item.id);
@@ -332,7 +349,7 @@ function Cashier() {
         });
       }
 
-      // Refresh daftar produk
+      // Refresh daftar produk dari Firestore
       const snapshot = await getDocs(collection(db, 'products'));
       setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
@@ -365,17 +382,18 @@ function Cashier() {
     <div className="animate-fade-in p-6">
       {/* Notifikasi */}
       {notification && (
-  <div className="fixed inset-0 pointer-events-none z-50">
-    <div className="absolute inset-x-4 top-4 flex flex-col items-center gap-3 sm:items-end">
-      <Notification
-        key={notification.message + Date.now()} // agar animasi jalan tiap notif baru
-        message={notification.message}
-        type={notification.type}
-        onClose={() => setNotification(null)}
-      />
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 pointer-events-none z-50">
+          <div className="absolute inset-x-4 top-4 flex flex-col items-center gap-3 sm:items-end">
+            <Notification
+              key={notification.id} // Gunakan ID unik sebagai key
+              id={notification.id}
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          </div>
+        </div>
+      )}
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Kasir</h1>
       
@@ -458,46 +476,56 @@ function Cashier() {
             </div>
           ) : (
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="p-4 bg-white rounded-lg shadow flex justify-between items-center hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center space-x-4">
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-10 h-10 object-cover rounded"
-                      />
-                    ) : (
-                      <span className="w-10 h-10 flex items-center justify-center text-gray-500 bg-gray-100 rounded">
-                        T/A
-                      </span>
-                    )}
-                    <div>
-                      <p className="font-medium text-gray-900">{product.name}</p>
-                      <p className="text-xs text-blue-600 font-medium">{product.category || 'Lainnya'}</p>
-                      <p className="text-sm text-gray-500">{formatRupiah(product.price)}</p>
-                      <p className={`text-sm ${product.stock > 0 ? 'text-gray-500' : 'text-red-500 font-semibold'}`}>
-                        Stok: {product.stock}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => addToCart(product)}
-                    className={`btn ${
-                      product.stock === 0
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-primary-500 text-white hover:bg-primary-600'
-                    }`}
-                    disabled={product.stock === 0}
-                    aria-label={`Tambah ${product.name} ke keranjang`}
+              {filteredProducts.map((product) => {
+                const cartItem = cart.find(item => item.id === product.id);
+                const remainingStock = product.stock - (cartItem?.quantity || 0);
+                
+                return (
+                  <div
+                    key={product.id}
+                    className="p-4 bg-white rounded-lg shadow flex justify-between items-center hover:shadow-md transition-shadow"
                   >
-                    {product.stock === 0 ? 'Habis' : '+'}
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center space-x-4">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-10 h-10 object-cover rounded"
+                        />
+                      ) : (
+                        <span className="w-10 h-10 flex items-center justify-center text-gray-500 bg-gray-100 rounded">
+                          T/A
+                        </span>
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">{product.name}</p>
+                        <p className="text-xs text-blue-600 font-medium">{product.category || 'Lainnya'}</p>
+                        <p className="text-sm text-gray-500">{formatRupiah(product.price)}</p>
+                        <p className={`text-sm ${product.stock > 0 ? 'text-gray-500' : 'text-red-500 font-semibold'}`}>
+                          Stok: {product.stock}
+                          {cartItem && (
+                            <span className="text-orange-600 ml-2">
+                              (sisa: {remainingStock})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => addToCart(product)}
+                      className={`btn ${
+                        product.stock === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-primary-500 text-white hover:bg-primary-600'
+                      }`}
+                      disabled={product.stock === 0}
+                      aria-label={`Tambah ${product.name} ke keranjang`}
+                    >
+                      {product.stock === 0 ? 'Habis' : '+'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -513,52 +541,64 @@ function Cashier() {
           ) : (
             <div className="space-y-4">
               <div className="max-h-80 overflow-y-auto space-y-4">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-4 bg-white rounded-lg shadow flex justify-between items-center"
-                  >
-                    <div className="flex items-center space-x-4">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-10 h-10 object-cover rounded"
-                        />
-                      ) : (
-                        <span className="w-10 h-10 flex items-center justify-center text-gray-500 bg-gray-100 rounded">
-                          T/A
-                        </span>
-                      )}
-                      <div>
-                        <p className="font-medium text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {formatRupiah(item.price)} x {item.quantity}
-                        </p>
-                        <p className="text-sm font-semibold text-green-600">
-                          {formatRupiah(item.price * item.quantity)}
-                        </p>
+                {cart.map((item) => {
+                  const product = products.find(p => p.id === item.id);
+                  const isOverStock = product && item.quantity > product.stock;
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-lg shadow flex justify-between items-center ${
+                        isOverStock ? 'bg-red-50 border-2 border-red-300' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-4">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-10 h-10 object-cover rounded"
+                          />
+                        ) : (
+                          <span className="w-10 h-10 flex items-center justify-center text-gray-500 bg-gray-100 rounded">
+                            T/A
+                          </span>
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900">{item.name}</p>
+                          <p className="text-sm text-gray-500">
+                            {formatRupiah(item.price)} x {item.quantity}
+                          </p>
+                          <p className="text-sm font-semibold text-green-600">
+                            {formatRupiah(item.price * item.quantity)}
+                          </p>
+                          {isOverStock && (
+                            <p className="text-xs text-red-600 font-semibold mt-1">
+                              ⚠️ Melebihi stok! (stok: {product.stock})
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => decreaseQuantity(item.id)}
+                          className="btn bg-gray-200 text-gray-700 hover:bg-gray-300 px-3 py-1 rounded"
+                          aria-label={`Kurangi jumlah ${item.name}`}
+                        >
+                          -
+                        </button>
+                        <span className="font-semibold text-gray-900 min-w-[30px] text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="btn bg-red-500 text-white hover:bg-red-600 px-3 py-1 rounded"
+                          aria-label={`Hapus ${item.name} dari keranjang`}
+                        >
+                          Hapus
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => decreaseQuantity(item.id)}
-                        className="btn bg-gray-200 text-gray-700 hover:bg-gray-300 px-3 py-1 rounded"
-                        aria-label={`Kurangi jumlah ${item.name}`}
-                      >
-                        -
-                      </button>
-                      <span className="font-semibold text-gray-900 min-w-[30px] text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="btn bg-red-500 text-white hover:bg-red-600 px-3 py-1 rounded"
-                        aria-label={`Hapus ${item.name} dari keranjang`}
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               <div className="mt-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
@@ -635,21 +675,21 @@ function Cashier() {
       </div>
 
       <style jsx>{`
-  @keyframes slide-down-fade {
-    from {
-      transform: translateY(-40px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
+        @keyframes slide-down-fade {
+          from {
+            transform: translateY(-40px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
 
-  .animate-slide-down-fade {
-    animation: slide-down-fade 0.4s ease-out forwards;
-  }
-`}</style>
+        .animate-slide-down-fade {
+          animation: slide-down-fade 0.4s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 }
