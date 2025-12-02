@@ -56,10 +56,6 @@ const generateSignature = (method, endpoint, body, timestamp) => {
     .digest('hex');
 };
 
-<<<<<<< HEAD
-=======
-// ✅ FIX: Pastikan route parameter ditulis dengan benar
->>>>>>> f02e6ac5b87aa028f567b9ecb85ce1414dc27a04
 app.post('/api/create-qris-doku', async (req, res) => {
   const { amount, orderId } = req.body;
   
@@ -184,10 +180,7 @@ app.post('/api/create-qris-doku', async (req, res) => {
       
       // CRC16-CCITT checksum (simplified dummy)
       qrData += '6304';
-<<<<<<< HEAD
       const qrDummy = qrData + 'XXXX'; // Placeholder CRC
-=======
->>>>>>> f02e6ac5b87aa028f567b9ecb85ce1414dc27a04
       
       // Calculate simple CRC (for demo purposes)
       const crc = calculateCRC16(qrData + '6304');
@@ -240,10 +233,6 @@ app.post('/webhook/doku', (req, res) => {
   res.status(200).send('OK');
 });
 
-<<<<<<< HEAD
-=======
-// ✅ FIX: Perbaiki penulisan parameter route
->>>>>>> f02e6ac5b87aa028f567b9ecb85ce1414dc27a04
 app.get('/api/check-status/:dokuId', (req, res) => {
   const { dokuId } = req.params;
   const trx = transactions[dokuId];
@@ -261,11 +250,7 @@ app.get('/api/check-status/:dokuId', (req, res) => {
   });
 });
 
-<<<<<<< HEAD
 // Endpoint untuk simulate pembayaran (testing only)
-=======
-// ✅ FIX: Perbaiki penulisan parameter route
->>>>>>> f02e6ac5b87aa028f567b9ecb85ce1414dc27a04
 app.post('/api/simulate-payment/:dokuId', (req, res) => {
   const { dokuId } = req.params;
   const trx = transactions[dokuId];
@@ -280,7 +265,6 @@ app.post('/api/simulate-payment/:dokuId', (req, res) => {
   res.json({ success: true, message: 'Pembayaran berhasil disimulasikan', transaction: trx });
 });
 
-<<<<<<< HEAD
 app.listen(3001, () => {
   console.log('\n🚀 DOKU QRIS BACKEND JALAN!');
   console.log('💵 Minimal transaksi: Rp1.000');
@@ -288,33 +272,6 @@ app.listen(3001, () => {
   console.log('\n📝 Endpoint:');
   console.log('   POST /api/create-qris-doku        - Buat QR QRIS');
   console.log('   GET  /api/check-status/:dokuId    - Cek status transaksi');
-=======
-// ✅ Root endpoint untuk testing
-app.get('/', (req, res) => {
-  res.json({ 
-    status: 'online',
-    message: 'DOKU QRIS Backend is running!',
-    endpoints: {
-      createQRIS: 'POST /api/create-qris-doku',
-      checkStatus: 'GET /api/check-status/:dokuId',
-      simulatePayment: 'POST /api/simulate-payment/:dokuId',
-      webhook: 'POST /webhook/doku'
-    }
-  });
-});
-
-// ✅ Gunakan PORT dari environment variable Railway
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀 DOKU QRIS BACKEND JALAN di PORT ${PORT}!`);
-  console.log('💵 Minimal transaksi: Rp1.000');
-  console.log(`🔗 Webhook: ${DOKU_CALLBACK_URL}`);
-  console.log('\n📝 Endpoint:');
-  console.log('   GET  /                              - Health check');
-  console.log('   POST /api/create-qris-doku         - Buat QR QRIS');
-  console.log('   GET  /api/check-status/:dokuId     - Cek status transaksi');
->>>>>>> f02e6ac5b87aa028f567b9ecb85ce1414dc27a04
   console.log('   POST /api/simulate-payment/:dokuId - Simulasi pembayaran (testing)');
   console.log('   POST /webhook/doku                 - Webhook callback\n');
 });

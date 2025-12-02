@@ -20,11 +20,7 @@ import {
   MdWarning,
 } from 'react-icons/md';
 
-<<<<<<< HEAD
 const API_BASE_URL = 'http://localhost:3001/api';
-=======
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
->>>>>>> f02e6ac5b87aa028f567b9ecb85ce1414dc27a04
 
 // ==================== NOTIFIKASI ====================
 const Notification = ({ message, type, onClose, id }) => {

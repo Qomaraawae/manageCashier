@@ -82,10 +82,6 @@ function Products() {
     'Makanan',
     'Minuman',
     'Snack',
-    'Bumbu Dapur',
-    'Kebutuhan Rumah',
-    'Kesehatan',
-    'Alat Tulis',
     'Lainnya'
   ];
 
