@@ -2,6 +2,6 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "node doku-backend/server.js"
+startCommand = "node midtrans-backend/server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
