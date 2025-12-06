@@ -7,9 +7,7 @@ const app = express();
 
 // === CORS ===
 // Ganti origin dengan domain frontend Netlify kamu
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "*"
-}));
+app.use(cors({ origin: "https://storecashier.netlify.app" }));
 
 app.use(express.json());
 
