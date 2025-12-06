@@ -226,40 +226,39 @@ function Cashier() {
 
     try {
       const saleData = {
-        customerName: customerName || "Pembeli Langsung",
-        items: cart.map((i) => ({
-          productId: i.id,
-          name: i.name,
-          price: i.price,
-          quantity: i.quantity,
-        })),
-        total,
-        cashAmount: cash,
-        change: cash - total,
-        timestamp: new Date(),
-        paymentMethod: "cash",
-      };
-      const ref = await addDoc(collection(db, "sales"), saleData);
-      saleData.saleId = ref.id;
+      customerName: customerName || "QRIS Midtrans",
+      items: cart.map(i => ({
+        productId: i.id,
+        name: i.name,
+        price: i.price,
+        quantity: i.quantity
+      })),
+      total: calculateTotal(),
+      cashAmount: calculateTotal(),
+      change: 0,
+      timestamp: new Date(),
+      paymentMethod: "QRIS",
+      saleId: currentOrderId, // BARIS INI HARUS ADA!
+    };
 
-      for (const item of cart) {
-        const p = products.find((x) => x.id === item.id);
-        await updateDoc(doc(db, "products", item.id), { stock: p.stock - item.quantity });
-      }
+    await addDoc(collection(db, "sales"), saleData);
 
-      const snap = await getDocs(collection(db, "products"));
-      setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    // Update status di collection transactions jadi "paid"
+    await setDoc(doc(db, "transactions", currentOrderId), {
+      status: "paid",
+      updatedAt: new Date()
+    }, { merge: true });
 
-      generateReceiptPDF(saleData, showNotification);
-      setCart([]);
-      setCustomerName("");
-      setCashAmount("");
-      showNotification("Transaksi tunai berhasil!", "success");
-    } catch (err) {
-      showNotification("Gagal simpan transaksi", "error");
-    }
-  };
-
+    generateReceiptPDF({ ...saleData, id: currentOrderId }, showNotification);
+    setCart([]);
+    setCustomerName("");
+    setCashAmount("");
+    showNotification("Pembayaran QRIS berhasil! Terima kasih", "success");
+  } catch (err) {
+    console.error(err);
+    showNotification("Gagal menyimpan transaksi", "error");
+  }
+};
   // BAYAR QRIS MIDTRANS (SUDAH DIPERBAIKI → PAKAI SNAP TOKEN)
   const payWithMidtrans = async () => {
     if (cart.length === 0 || isProcessingPayment) return;
@@ -307,35 +306,21 @@ function Cashier() {
   };
 
   const finalizePayment = async (status) => {
-    setIsProcessingPayment(false);
-    if (status !== "paid") return showNotification("Pembayaran tidak berhasil", "error");
+  setIsProcessingPayment(false);
+  if (status !== "paid") return showNotification("Pembayaran tidak berhasil", "error");
 
-    try {
-      for (const item of cart) {
-        const p = products.find((x) => x.id === item.id);
-        await updateDoc(doc(db, "products", item.id), { stock: p.stock - item.quantity });
-      }
-      setProducts((await getDocs(collection(db, "products"))).docs.map(d => ({ id: d.id, ...d.data() })));
-
-      const saleData = {
-        customerName: customerName || "QRIS Midtrans",
-        items: cart.map(i => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
-        total: calculateTotal(),
-        cashAmount: calculateTotal(),
-        change: 0,
-        timestamp: new Date(),
-        saleId: currentOrderId,
-        paymentMethod: "QRIS",
-      };
-      await addDoc(collection(db, "sales"), saleData);
-      generateReceiptPDF(saleData, showNotification);
-
-      setCart([]); setCustomerName(""); setCashAmount("");
-      showNotification("Pembayaran QRIS berhasil! Terima kasih", "success");
-    } catch (err) {
-      showNotification("Gagal menyimpan transaksi", "error");
+  try {
+    // 1. Kurangi stok dulu
+    for (const item of cart) {
+      const p = products.find((x) => x.id === item.id);
+      await updateDoc(doc(db, "products", item.id), { 
+        stock: p.stock - item.quantity 
+      });
     }
-  };
+
+    // Refresh produk
+    const updatedProducts = await getDocs(collection(db, "products"));
+    setProducts(updatedProducts.docs.map(d => ({ id: d.id, ...d.data() })));
 
   // RENDER — TAMPILAN 100% PERSIS SEPERTI ASLI ANDA
   return (
