@@ -2,6 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
+
 startCommand = "node midtrans-backend/server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
