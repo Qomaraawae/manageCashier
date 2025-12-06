@@ -6,7 +6,7 @@ const app = express();
 
 // CORS – aman semua origin yang kita izinkan
 app.use(cors({
-  origin: ["https://storecashier.netlify.app", "http://localhost:5173", "http://localhost:3000"],
+  origin: ["https://storecashier.netlify.app", "http://localhost:5173", "http://localhost:3001"],
   credentials: true,
 }));
 app.options("*", cors());
