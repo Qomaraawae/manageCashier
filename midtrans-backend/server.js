@@ -9,7 +9,7 @@ app.use(cors({
   origin: [
     "https://storecashier.netlify.app",
     "http://localhost:5173",        // untuk development vite
-    "http://localhost:3000",        // kalau pakai port lain
+    "http://localhost:3001",        // kalau pakai port lain
   ],
   credentials: true,
   methods: ["GET", "POST", "OPTIONS"],
