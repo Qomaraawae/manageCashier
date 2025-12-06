@@ -1,21 +1,30 @@
 require("dotenv").config();
-
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const app = express();
 
-// === CORS ===
-// Ganti origin dengan domain frontend Netlify kamu
-app.use(cors({ origin: "https://storecashier.netlify.app" }));
+// === CORS – DIPERBAIKI & DIPERKUAT ===
+app.use(cors({
+  origin: [
+    "https://storecashier.netlify.app",
+    "http://localhost:5173",        // untuk development vite
+    "http://localhost:3000",        // kalau pakai port lain
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+// Handle preflight untuk semua route (penting!)
+app.options("*", cors());
 
 app.use(express.json());
 
 // ============= MIDTRANS CONFIG =============
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
-const MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY; // untuk Snap di frontend
-const MIDTRANS_IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "false";
-
+const MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY;
+const MIDTRANS_IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "true";
 const MIDTRANS_API_URL = MIDTRANS_IS_PRODUCTION
   ? "https://app.midtrans.com"
   : "https://app.sandbox.midtrans.com";
@@ -30,10 +39,15 @@ if (!MIDTRANS_SERVER_KEY || !MIDTRANS_CLIENT_KEY) {
 // Simpan transaksi sementara di memory
 const transactions = {};
 
-// ============= ENDPOINT SNAP =============
-// Buat transaksi → langsung dapat snap_token
-app.post("/api/create-transaction", async (req, res) => {
+// ============= ENDPOINT SNAP – DIPERBAIKI =============
+// SESUAI DENGAN YANG DIPANGGIL FRONTEND: /create-transaction (tanpa /api)
+app.post("/create-transaction", async (req, res) => {
   const { amount, orderId, customer } = req.body;
+
+  if (!amount || !orderId) {
+    return res.status(400).json({ success: false, error: "Amount & orderId wajib diisi" });
+  }
+
   const authString = Buffer.from(MIDTRANS_SERVER_KEY + ":").toString("base64");
 
   const payload = {
@@ -63,9 +77,7 @@ app.post("/api/create-transaction", async (req, res) => {
       "alfamart",
     ],
     callbacks: {
-      finish: process.env.FRONTEND_URL
-        ? `${process.env.FRONTEND_URL}/payment-success`
-        : "https://storecashier.netlify.app/payment-success",
+      finish: "https://storecashier.netlify.app/payment-success",
     },
   };
 
@@ -87,7 +99,7 @@ app.post("/api/create-transaction", async (req, res) => {
       createdAt: new Date(),
     };
 
-    console.log("Transaksi dibuat:", orderId, "Rp" + amount.toLocaleString());
+    console.log("Transaksi dibuat:", orderId, "Rp" + amount.toLocaleString("id-ID"));
 
     res.json({
       success: true,
@@ -98,15 +110,15 @@ app.post("/api/create-transaction", async (req, res) => {
     console.error("Error Midtrans Snap:", error.response?.data || error.message);
     res.status(500).json({
       success: false,
-      error: "Gagal membuat transaksi",
+      error: "Gagal membuat transaksi Midtrans",
+      details: error.response?.data || error.message,
     });
   }
 });
 
-// Webhook Midtrans
+// Webhook Midtrans (tetap sama)
 app.post("/webhook/midtrans", (req, res) => {
   const { order_id, transaction_status } = req.body;
-
   if (transactions[order_id]) {
     if (["settlement", "capture"].includes(transaction_status)) {
       transactions[order_id].status = "paid";
@@ -116,20 +128,23 @@ app.post("/webhook/midtrans", (req, res) => {
       console.log(`GAGAL ${order_id}`);
     }
   }
-
   res.status(200).json({ success: true });
 });
 
-// Cek status transaksi
+// Cek status (opsional, tetap pakai /api kalau kamu pakai di tempat lain)
 app.get("/api/check-status/:orderId", (req, res) => {
   const trx = transactions[req.params.orderId];
   if (!trx) return res.status(404).json({ success: false, error: "Not found" });
-
   res.json({ success: true, status: trx.status });
+});
+
+// Health check (bagus untuk Railway)
+app.get("/", (req, res) => {
+  res.send("Midtrans Backend Kasir – SIAP!");
 });
 
 app.listen(PORT, () => {
   console.log("\nMIDTRANS SNAP BACKEND SIAP!");
-  console.log(`URL publik Railway: http://localhost:${PORT} (diganti Railway nanti)`);
-  console.log(`Mode: ${MIDTRANS_IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}\n`);
+  console.log(`Mode: ${MIDTRANS_IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}`);
+  console.log(`Server jalan di port: ${PORT}\n`);
 });
