@@ -152,23 +152,23 @@ function Reports() {
         });
 
         const data = salesSnap.docs.map(doc => {
-          const d = doc.data();
-          const orderId = d.saleId || doc.id;
+  const d = doc.data();
+  const orderId = d.saleId || doc.id; // Ini sudah benar
 
-          return {
-            id: doc.id,
-            customerName: d.customerName || 'Pembeli Langsung',
-            timestamp: d.timestamp,
-            items: d.items || [],
-            total: d.total || 0,
-            cashAmount: d.cashAmount || 0,
-            change: d.change || 0,
-            paymentMethod: d.paymentMethod || 'cash',
-            paymentStatus: d.paymentMethod === 'QRIS'
-              ? (midtransStatus[orderId] || 'pending')
-              : 'paid', // Tunai langsung dianggap paid
-          };
-        });
+  return {
+    id: doc.id,
+    customerName: d.customerName || 'Pembeli Langsung',
+    timestamp: d.timestamp,
+    items: d.items || [],
+    total: d.total || 0,
+    cashAmount: d.cashAmount || 0,
+    change: d.change || 0,
+    paymentMethod: d.paymentMethod || 'cash',
+    paymentStatus: d.paymentMethod === 'QRIS'
+      ? (midtransStatus[orderId] || 'pending')  // Pakai orderId dari saleId
+      : 'paid',
+  };
+});
 
         setSales(data);
         setFilteredSales(data);
