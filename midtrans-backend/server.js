@@ -62,7 +62,7 @@ app.post("/api/create-transaction", async (req, res) => {
       "alfamart",
     ],
     callbacks: {
-      finish: "http://localhost:5173/payment-success", // ganti sesuai frontend kamu
+      finish: "https://storecashier.netlify.app/payment-success", // ganti sesuai frontend kamu
     },
   };
 
