@@ -5,13 +5,18 @@ const axios = require("axios");
 const cors = require("cors");
 const app = express();
 
-app.use(cors());
+// === CORS ===
+// Ganti origin dengan domain frontend Netlify kamu
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "*"
+}));
+
 app.use(express.json());
 
 // ============= MIDTRANS CONFIG =============
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
-const MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY; // wajib untuk Snap di frontend
-const MIDTRANS_IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "true";
+const MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY; // untuk Snap di frontend
+const MIDTRANS_IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "false";
 
 const MIDTRANS_API_URL = MIDTRANS_IS_PRODUCTION
   ? "https://app.midtrans.com"
@@ -20,9 +25,7 @@ const MIDTRANS_API_URL = MIDTRANS_IS_PRODUCTION
 const PORT = process.env.PORT || 3001;
 
 if (!MIDTRANS_SERVER_KEY || !MIDTRANS_CLIENT_KEY) {
-  console.error(
-    "MIDTRANS_SERVER_KEY atau MIDTRANS_CLIENT_KEY tidak ada di .env!"
-  );
+  console.error("MIDTRANS_SERVER_KEY atau MIDTRANS_CLIENT_KEY tidak ada di environment!");
   process.exit(1);
 }
 
@@ -62,7 +65,9 @@ app.post("/api/create-transaction", async (req, res) => {
       "alfamart",
     ],
     callbacks: {
-      finish: "https://storecashier.netlify.app/payment-success", // ganti sesuai frontend kamu
+      finish: process.env.FRONTEND_URL
+        ? `${process.env.FRONTEND_URL}/payment-success`
+        : "https://storecashier.netlify.app/payment-success",
     },
   };
 
@@ -78,7 +83,6 @@ app.post("/api/create-transaction", async (req, res) => {
       }
     );
 
-    // Simpan status awal
     transactions[orderId] = {
       status: "pending",
       amount,
@@ -89,14 +93,11 @@ app.post("/api/create-transaction", async (req, res) => {
 
     res.json({
       success: true,
-      snap_token: response.data.token, // ini yang dipakai di frontend
-      redirect_url: response.data.redirect_url, // optional, bisa langsung redirect
+      snap_token: response.data.token,
+      redirect_url: response.data.redirect_url,
     });
   } catch (error) {
-    console.error(
-      "Error Midtrans Snap:",
-      error.response?.data || error.message
-    );
+    console.error("Error Midtrans Snap:", error.response?.data || error.message);
     res.status(500).json({
       success: false,
       error: "Gagal membuat transaksi",
@@ -104,15 +105,12 @@ app.post("/api/create-transaction", async (req, res) => {
   }
 });
 
-// Webhook (tetap pakai ini biar status otomatis update)
+// Webhook Midtrans
 app.post("/webhook/midtrans", (req, res) => {
-  const { order_id, transaction_status, fraud_status } = req.body;
+  const { order_id, transaction_status } = req.body;
 
   if (transactions[order_id]) {
-    if (
-      transaction_status === "settlement" ||
-      transaction_status === "capture"
-    ) {
+    if (["settlement", "capture"].includes(transaction_status)) {
       transactions[order_id].status = "paid";
       console.log(`LUNAS ${order_id}`);
     } else if (["deny", "cancel", "expire"].includes(transaction_status)) {
@@ -124,7 +122,7 @@ app.post("/webhook/midtrans", (req, res) => {
   res.status(200).json({ success: true });
 });
 
-// Cek status (opsional)
+// Cek status transaksi
 app.get("/api/check-status/:orderId", (req, res) => {
   const trx = transactions[req.params.orderId];
   if (!trx) return res.status(404).json({ success: false, error: "Not found" });
@@ -134,6 +132,6 @@ app.get("/api/check-status/:orderId", (req, res) => {
 
 app.listen(PORT, () => {
   console.log("\nMIDTRANS SNAP BACKEND SIAP!");
-  console.log(`http://localhost:${PORT}`);
+  console.log(`URL publik Railway: http://localhost:${PORT} (diganti Railway nanti)`);
   console.log(`Mode: ${MIDTRANS_IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}\n`);
 });
