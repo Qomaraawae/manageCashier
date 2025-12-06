@@ -1,4 +1,13 @@
+[build]
+  base = "."
+  publish = "dist"          # kalau pakai Vite
+
+  # Environment variables (biar bisa dipakai di build)
+  [build.environment]
+    VITE_MIDTRANS_CLIENT_KEY = "Mid-client-449ARoEn6vbqXePR"
+
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "managecashier-production.up.railway.app"
   status = 200
+  force = true

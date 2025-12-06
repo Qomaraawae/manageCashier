@@ -17,6 +17,7 @@ import Cashier from './pages/Cashier';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
+import PaymentSuccess from './pages/PaymentSuccess';
 
 // Components
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -57,7 +58,7 @@ function App() {
         </Route>
 
         {/* 404 Route */}
-        <Route path="*" element={<NotFound />} />
+        <Route path="/payment-success" element={user ? <PaymentSuccess /> : <Navigate to="/login" />} />
       </Routes>
     </div>
   );
@@ -71,4 +72,4 @@ function RootApp() {
   );
 }
 
-export default RootApp;
+export default App;

@@ -12,8 +12,11 @@ dist
 build
 dist-ssr
 .env
+*.env
+.env.example
 .env.local
 *.local
+
 
 # Editor directories and files
 .vscode/*
@@ -25,8 +28,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Credentials
-serviceAccountKey.json
-**/serviceAccountKey.json
-doku-backend/serviceAccountKey.json
