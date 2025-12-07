@@ -1,4 +1,3 @@
-// Cashier.jsx → TAMPILAN 100% KEMBALI KE VERSI ASLI ANDA
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -20,9 +19,7 @@ import {
   MdWarning,
 } from "react-icons/md";
 
-const API_BASE_URL = import.meta.env.PROD 
-  ? '/api'  
-  : 'http://localhost:3001/api';  
+const API_BASE_URL = "https://managecashier-production.up.railway.app";  
 
 // ==================== NOTIFIKASI (TETAP PERSIS) ====================
 const Notification = ({ message, type, onClose, id }) => {
