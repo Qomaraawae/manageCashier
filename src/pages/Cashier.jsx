@@ -19,7 +19,7 @@ import {
   MdWarning,
 } from "react-icons/md";
 
-const API_BASE_URL = "https://managecashier-production.up.railway.app";  
+const API_BASE_URL = "https://managecashier-production.up.railway.app/api";
 
 // ==================== NOTIFIKASI (TETAP PERSIS) ====================
 const Notification = ({ message, type, onClose, id }) => {
