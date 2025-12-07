@@ -1,5 +1,3 @@
-// server.js — VERSI PALING AMAN & MINIMAL (100% JALAN DI RAILWAY)
-
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
@@ -11,41 +9,53 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Pastikan environment ada
+// Validasi environment variable
 if (!process.env.MIDTRANS_SERVER_KEY) {
-  console.error("MIDTRANS_SERVER_KEY tidak ada!");
+  console.error("❌ MIDTRANS_SERVER_KEY tidak ditemukan di .env");
   process.exit(1);
 }
 
-// Hanya 1 endpoint utama — TIDAK ADA YANG BISA RUSAK
-app.post("/api/create-transaction", async (req, res) => {
-  try {
-    const { amount, orderId } = req.body;
+const IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "true";
+const MIDTRANS_API = IS_PRODUCTION
+  ? "https://app.midtrans.com"
+  : "https://app.sandbox.midtrans.com";
 
+console.log(`🚀 Server mode: ${IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}`);
+
+// ENDPOINT UTAMA: CREATE SNAP TOKEN
+app.post("/create-transaction", async (req, res) => {
+  try {
+    const { amount, orderId, customer } = req.body;
+
+    // Validasi input
     if (!amount || !orderId) {
-      return res
-        .status(400)
-        .json({ success: false, error: "amount & orderId wajib" });
+      return res.status(400).json({
+        success: false,
+        error: "amount dan orderId wajib diisi",
+      });
     }
 
+    // Buat authorization header
     const auth = Buffer.from(process.env.MIDTRANS_SERVER_KEY + ":").toString(
       "base64"
     );
 
-    // PAKAI CORE API + QRIS dengan acquirer GoPay
-    const chargeResponse = await axios.post(
-      "https://app.sandbox.midtrans.com/v2/charge", // ganti app.midtrans.com kalau sudah production
+    // Request Snap Token ke Midtrans
+    const snapResponse = await axios.post(
+      `${MIDTRANS_API}/snap/v1/transactions`,
       {
-        payment_type: "qris",
         transaction_details: {
           order_id: orderId,
           gross_amount: amount,
         },
-        qris: {
-          acquirer: "gopay", // ini yang bikin QR bisa dipindai GoPay & semua e-wallet lain
+        customer_details: {
+          first_name: customer?.name || "Pembeli",
+          email: customer?.email || "customer@example.com",
+          phone: customer?.phone || "081234567890",
         },
+        enabled_payments: ["qris", "gopay", "shopeepay", "other_qris"],
         callbacks: {
-          finish: "https://yourdomain.com/thanks", // optional, redirect setelah sukses
+          finish: "https://yourdomain.com/payment-success",
         },
         expiry: {
           start_time:
@@ -54,55 +64,88 @@ app.post("/api/create-transaction", async (req, res) => {
               .slice(0, 19)
               .replace("T", " ") + " +0700",
           unit: "minutes",
-          duration: 15, // sesuaikan dengan timer 23 menit Anda
+          duration: 15,
         },
       },
       {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Basic ${auth}`,
+          Accept: "application/json",
         },
       }
     );
 
-    const data = chargeResponse.data;
+    const { token, redirect_url } = snapResponse.data;
 
-    // Ambil URL gambar QR Code langsung dari Midtrans
-    const qrAction = data.actions?.find(
-      (a) => a.name === "generate-qr-code" || a.name === "generate-qr-code-v2"
-    );
+    console.log(`✅ Snap token berhasil dibuat untuk order: ${orderId}`);
 
-    if (!qrAction) {
-      throw new Error("QR action tidak ditemukan di response Midtrans");
-    }
-
-    // Langsung ambil gambar QRnya
-    const qrImageResponse = await axios.get(qrAction.url, {
-      headers: { Authorization: `Basic ${auth}` },
-      responseType: "arraybuffer",
-    });
-
-    const qrBase64 = Buffer.from(qrImageResponse.data).toString("base64");
-    const qrCodeImage = `data:image/png;base64,${qrBase64}`;
-
-    // Kirim semua data yang dibutuhkan frontend kasir
+    // Kirim snap token ke frontend
     res.json({
       success: true,
+      snap_token: token,
+      redirect_url: redirect_url,
       order_id: orderId,
       amount: amount,
-      qr_code_image: qrCodeImage, // ini yang langsung ditampilkan
-      qr_string: data.qr_string, // cadangan kalau mau generate sendiri
-      transaction_id: data.transaction_id,
-      expiry_time: data.expiry_time,
     });
   } catch (err) {
     console.error(
-      "Error create transaction:",
+      "❌ Error create transaction:",
       err.response?.data || err.message
     );
     res.status(500).json({
       success: false,
-      error: err.response?.data || err.message,
+      error:
+        err.response?.data?.error_messages?.[0] ||
+        err.message ||
+        "Gagal membuat transaksi",
     });
   }
+});
+
+// ENDPOINT HEALTH CHECK
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    mode: IS_PRODUCTION ? "PRODUCTION" : "SANDBOX",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ENDPOINT WEBHOOK (opsional, untuk auto-update status)
+app.post("/webhook", async (req, res) => {
+  try {
+    const notification = req.body;
+    console.log("📩 Webhook received:", notification);
+
+    // Validasi signature (PENTING untuk produksi)
+    // TODO: Implementasi signature validation
+
+    const { order_id, transaction_status, fraud_status } = notification;
+
+    console.log(`📋 Order ${order_id} status: ${transaction_status}`);
+
+    // Di sini Anda bisa update status di Firestore
+    // await updateDoc(doc(db, "transactions", order_id), { status: transaction_status });
+
+    res.json({ status: "OK" });
+  } catch (err) {
+    console.error("❌ Webhook error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: `Endpoint ${req.method} ${req.path} tidak ditemukan`,
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`✅ Server berjalan di http://localhost:${PORT}`);
+  console.log(
+    `📡 Mode: ${IS_PRODUCTION ? "PRODUCTION ⚠️" : "SANDBOX (testing)"}`
+  );
 });

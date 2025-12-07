@@ -19,9 +19,9 @@ import {
   MdWarning,
 } from "react-icons/md";
 
-const API_BASE_URL = "https://managecashier-production.up.railway.app";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://managecashier-production.up.railway.app";
 
-// ==================== NOTIFIKASI (TETAP PERSIS) ====================
+// ==================== NOTIFIKASI ====================
 const Notification = ({ message, type, onClose, id }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
@@ -56,7 +56,7 @@ const Notification = ({ message, type, onClose, id }) => {
   );
 };
 
-// ==================== FORMAT RUPIAH & PDF (TETAP PERSIS) ====================
+// ==================== FORMAT RUPIAH & PDF ====================
 const formatRupiah = (value) => {
   if (isNaN(value)) return "Rp 0";
   return new Intl.NumberFormat("id-ID", {
@@ -142,15 +142,13 @@ function Cashier() {
   const [cashAmount, setCashAmount] = useState("");
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
-
-  // MIDTRANS STATES
   const [currentOrderId, setCurrentOrderId] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const showNotification = (msg, type) =>
     setNotification({ message: msg, type, id: Date.now() });
 
-  // Load Midtrans Snap.js (sandbox/production otomatis)
+  // Load Midtrans Snap.js
   useEffect(() => {
     const isProduction = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true';
     const script = document.createElement("script");
@@ -159,23 +157,26 @@ function Cashier() {
       : "https://app.sandbox.midtrans.com/snap/snap.js";
     script.setAttribute("data-client-key", import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
     script.async = true;
+    script.onload = () => console.log("✅ Midtrans Snap.js loaded");
+    script.onerror = () => showNotification("Gagal load Midtrans script", "error");
     document.body.appendChild(script);
     return () => document.body.contains(script) && document.body.removeChild(script);
   }, []);
 
   // Fetch products
   useEffect(() => {
-    const fetch = async () => {
+    const fetchProducts = async () => {
       try {
         const snap = await getDocs(collection(db, "products"));
         setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       } catch (err) {
+        console.error(err);
         showNotification("Gagal memuat produk.", "error");
       } finally {
         setLoading(false);
       }
     };
-    fetch();
+    fetchProducts();
   }, []);
 
   const categories = ["Semua", ...new Set(products.map((p) => p.category || "Lainnya"))];
@@ -189,7 +190,10 @@ function Cashier() {
     if (product.stock === 0) return showNotification(`Stok ${product.name} habis`, "warning");
     setCart((prev) => {
       const exist = prev.find((i) => i.id === product.id);
-      if (exist && exist.quantity >= product.stock) return showNotification("Stok tidak cukup", "warning"), prev;
+      if (exist && exist.quantity >= product.stock) {
+        showNotification("Stok tidak cukup", "warning");
+        return prev;
+      }
       showNotification(`${product.name} ditambahkan`, "success");
       return exist
         ? prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
@@ -210,7 +214,7 @@ function Cashier() {
 
   const calculateTotal = () => cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
-  // BAYAR TUNAI (TETAP PERSIS)
+  // BAYAR TUNAI
   const completeTransaction = async () => {
     if (cart.length === 0) return showNotification("Keranjang kosong", "warning");
 
@@ -255,13 +259,20 @@ function Cashier() {
       setCashAmount("");
       showNotification("Transaksi tunai berhasil!", "success");
     } catch (err) {
+      console.error(err);
       showNotification("Gagal simpan transaksi", "error");
     }
   };
 
-  // BAYAR QRIS MIDTRANS (SUDAH DIPERBAIKI → PAKAI SNAP TOKEN)
+  // BAYAR QRIS MIDTRANS (SNAP POPUP)
   const payWithMidtrans = async () => {
     if (cart.length === 0 || isProcessingPayment) return;
+    
+    if (!window.snap) {
+      showNotification("Midtrans Snap belum siap, coba lagi", "error");
+      return;
+    }
+
     setIsProcessingPayment(true);
     showNotification("Membuat transaksi QRIS...", "warning");
 
@@ -270,20 +281,36 @@ function Cashier() {
     setCurrentOrderId(orderId);
 
     try {
+      console.log("📡 Request ke:", `${API_BASE_URL}/create-transaction`);
+      
       const res = await fetch(`${API_BASE_URL}/create-transaction`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: total,
           orderId,
-          customer: { name: customerName || "Pembeli", email: "customer@example.com", phone: "081234567890" },
+          customer: { 
+            name: customerName || "Pembeli", 
+            email: "customer@example.com", 
+            phone: "081234567890" 
+          },
         }),
       });
 
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Gagal membuat transaksi");
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText}`);
+      }
 
-      // Simpan sementara di Firestore
+      const data = await res.json();
+      
+      if (!data.success || !data.snap_token) {
+        throw new Error(data.error || "Snap token tidak ditemukan");
+      }
+
+      console.log("✅ Snap token diterima, membuka popup...");
+
+      // Simpan transaksi pending di Firestore
       await setDoc(doc(db, "transactions", orderId), {
         orderId,
         total,
@@ -293,54 +320,99 @@ function Cashier() {
 
       // Buka popup Snap
       window.snap.pay(data.snap_token, {
-        onSuccess: () => finalizePayment("paid"),
-        onPending: () => { showNotification("Menunggu pembayaran...", "warning"); setIsProcessingPayment(false); },
-        onError: () => { showNotification("Pembayaran gagal!", "error"); setIsProcessingPayment(false); },
-        onClose: () => { showNotification("Popup ditutup", "warning"); setIsProcessingPayment(false); },
+        onSuccess: (result) => {
+          console.log("✅ Pembayaran sukses:", result);
+          finalizePayment("paid", orderId);
+        },
+        onPending: (result) => {
+          console.log("⏳ Pembayaran pending:", result);
+          showNotification("Menunggu pembayaran...", "warning");
+          setIsProcessingPayment(false);
+        },
+        onError: (result) => {
+          console.error("❌ Error pembayaran:", result);
+          showNotification("Pembayaran gagal!", "error");
+          setIsProcessingPayment(false);
+        },
+        onClose: () => {
+          console.log("🚪 Popup ditutup");
+          showNotification("Popup pembayaran ditutup", "warning");
+          setIsProcessingPayment(false);
+        },
       });
 
     } catch (err) {
+      console.error("❌ Error:", err);
       showNotification("Error: " + err.message, "error");
       setIsProcessingPayment(false);
     }
   };
 
-  const finalizePayment = async (status) => {
+  const finalizePayment = async (status, orderId) => {
     setIsProcessingPayment(false);
     if (status !== "paid") return showNotification("Pembayaran tidak berhasil", "error");
 
     try {
+      // Update stok produk
       for (const item of cart) {
         const p = products.find((x) => x.id === item.id);
-        await updateDoc(doc(db, "products", item.id), { stock: p.stock - item.quantity });
+        await updateDoc(doc(db, "products", item.id), { 
+          stock: p.stock - item.quantity 
+        });
       }
-      setProducts((await getDocs(collection(db, "products"))).docs.map(d => ({ id: d.id, ...d.data() })));
+      
+      // Refresh products
+      const snap = await getDocs(collection(db, "products"));
+      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 
+      // Simpan sales record
       const saleData = {
         customerName: customerName || "QRIS Midtrans",
-        items: cart.map(i => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
+        items: cart.map(i => ({ 
+          productId: i.id, 
+          name: i.name, 
+          price: i.price, 
+          quantity: i.quantity 
+        })),
         total: calculateTotal(),
         cashAmount: calculateTotal(),
         change: 0,
         timestamp: new Date(),
-        saleId: currentOrderId,
+        saleId: orderId || currentOrderId,
         paymentMethod: "QRIS",
       };
       await addDoc(collection(db, "sales"), saleData);
+
+      // Update status transaksi
+      await updateDoc(doc(db, "transactions", orderId || currentOrderId), {
+        status: "paid",
+        paidAt: new Date(),
+      });
+
+      // Generate PDF
       generateReceiptPDF(saleData, showNotification);
 
-      setCart([]); setCustomerName(""); setCashAmount("");
+      // Reset form
+      setCart([]);
+      setCustomerName("");
+      setCashAmount("");
       showNotification("Pembayaran QRIS berhasil! Terima kasih", "success");
     } catch (err) {
+      console.error("❌ Gagal finalize:", err);
       showNotification("Gagal menyimpan transaksi", "error");
     }
   };
 
-  // RENDER — TAMPILAN 100% PERSIS SEPERTI ASLI ANDA
+  // ==================== RENDER ====================
   return (
     <div className="animate-fade-in p-6">
       {notification && (
-        <Notification message={notification.message} type={notification.type} id={notification.id} onClose={() => setNotification(null)} />
+        <Notification 
+          message={notification.message} 
+          type={notification.type} 
+          id={notification.id} 
+          onClose={() => setNotification(null)} 
+        />
       )}
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Kasir</h1>
@@ -359,7 +431,7 @@ function Cashier() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* === KIRI: DAFTAR PRODUK === */}
+        {/* KIRI: DAFTAR PRODUK */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Daftar Produk</h2>
           <div className="mb-4 relative">
@@ -383,7 +455,11 @@ function Cashier() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedCategory === cat ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  selectedCategory === cat 
+                    ? "bg-blue-500 text-white" 
+                    : "bg-gray-200"
+                }`}
               >
                 {cat}
               </button>
@@ -407,7 +483,9 @@ function Cashier() {
                           src={p.imageUrl || "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"}
                           alt={p.name}
                           className="w-full h-full object-cover"
-                          onError={(e) => { e.target.src = "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"; }}
+                          onError={(e) => { 
+                            e.target.src = "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"; 
+                          }}
                         />
                       </div>
 
@@ -415,7 +493,11 @@ function Cashier() {
                         <h3 className="font-semibold text-gray-900 mb-1 truncate">{p.name}</h3>
                         <p className="text-xs text-gray-500 mb-2">{p.category || "Lainnya"}</p>
                         <p className="text-lg font-bold text-blue-600 mb-1">{formatRupiah(p.price)}</p>
-                        <p className={`text-sm font-medium ${sisa === 0 ? "text-red-500" : sisa < 5 ? "text-orange-500" : "text-green-600"}`}>
+                        <p className={`text-sm font-medium ${
+                          sisa === 0 ? "text-red-500" : 
+                          sisa < 5 ? "text-orange-500" : 
+                          "text-green-600"
+                        }`}>
                           Stok: {p.stock} {inCart && `(sisa: ${sisa})`}
                         </p>
                       </div>
@@ -423,7 +505,11 @@ function Cashier() {
                       <button
                         onClick={() => addToCart(p)}
                         disabled={p.stock === 0}
-                        className={`flex-shrink-0 w-12 h-12 rounded-lg font-bold text-xl transition-all ${p.stock === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-sm"}`}
+                        className={`flex-shrink-0 w-12 h-12 rounded-lg font-bold text-xl transition-all ${
+                          p.stock === 0 
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed" 
+                            : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-sm"
+                        }`}
                       >
                         {p.stock === 0 ? "X" : "+"}
                       </button>
@@ -435,7 +521,7 @@ function Cashier() {
           </div>
         </div>
 
-        {/* === KANAN: KERANJANG (TETAP PERSIS) === */}
+        {/* KANAN: KERANJANG */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Keranjang</h2>
           {cart.length === 0 ? (
@@ -447,22 +533,47 @@ function Cashier() {
                   <div key={item.id} className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
                     <div className="flex items-start gap-3">
                       <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                        <img src={item.imageUrl || "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"} alt={item.name} className="w-full h-full object-cover" />
+                        <img 
+                          src={item.imageUrl || "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover" 
+                        />
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 mb-1 truncate">{item.name}</h3>
-                        <p className="text-sm text-gray-600 mb-2">{formatRupiah(item.price)} × {item.quantity}</p>
-                        <p className="text-lg font-bold text-green-600">{formatRupiah(item.price * item.quantity)}</p>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {formatRupiah(item.price)} × {item.quantity}
+                        </p>
+                        <p className="text-lg font-bold text-green-600">
+                          {formatRupiah(item.price * item.quantity)}
+                        </p>
                       </div>
 
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                          <button onClick={() => decreaseQuantity(item.id)} className="w-8 h-8 flex items-center justify-center bg-white rounded text-gray-700 hover:bg-gray-200 font-bold transition-colors">−</button>
-                          <span className="w-10 text-center font-semibold text-gray-900">{item.quantity}</span>
-                          <button onClick={() => addToCart(products.find(p => p.id === item.id))} className="w-8 h-8 flex items-center justify-center bg-white rounded text-gray-700 hover:bg-gray-200 font-bold transition-colors">+</button>
+                          <button 
+                            onClick={() => decreaseQuantity(item.id)} 
+                            className="w-8 h-8 flex items-center justify-center bg-white rounded text-gray-700 hover:bg-gray-200 font-bold transition-colors"
+                          >
+                            −
+                          </button>
+                          <span className="w-10 text-center font-semibold text-gray-900">
+                            {item.quantity}
+                          </span>
+                          <button 
+                            onClick={() => addToCart(products.find(p => p.id === item.id))} 
+                            className="w-8 h-8 flex items-center justify-center bg-white rounded text-gray-700 hover:bg-gray-200 font-bold transition-colors"
+                          >
+                            +
+                          </button>
                         </div>
-                        <button onClick={() => removeFromCart(item.id)} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">Hapus</button>
+                        <button 
+                          onClick={() => removeFromCart(item.id)} 
+                          className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                        >
+                          Hapus
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -472,11 +583,15 @@ function Cashier() {
               <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-300">
                   <span className="text-gray-600 font-medium">Total Belanja</span>
-                  <span className="text-3xl font-bold text-gray-900">{formatRupiah(calculateTotal())}</span>
+                  <span className="text-3xl font-bold text-gray-900">
+                    {formatRupiah(calculateTotal())}
+                  </span>
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Jumlah Tunai</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Jumlah Tunai
+                  </label>
                   <input
                     type="number"
                     value={cashAmount}
@@ -487,9 +602,20 @@ function Cashier() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-6">
-                  <button onClick={() => setCashAmount(calculateTotal())} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">Uang Pas</button>
+                  <button 
+                    onClick={() => setCashAmount(calculateTotal())} 
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    Uang Pas
+                  </button>
                   {[10000, 20000, 50000, 100000].map((v) => (
-                    <button key={v} onClick={() => setCashAmount(v)} className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors">{formatRupiah(v).replace('Rp ', 'Rp')}</button>
+                    <button 
+                      key={v} 
+                      onClick={() => setCashAmount(v)} 
+                      className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      {formatRupiah(v).replace('Rp ', 'Rp')}
+                    </button>
                   ))}
                 </div>
 
@@ -516,7 +642,11 @@ function Cashier() {
                   <button
                     onClick={payWithMidtrans}
                     disabled={isProcessingPayment || cart.length === 0}
-                    className={`py-4 rounded-xl font-bold text-base text-white transition-all active:scale-95 shadow-md ${isProcessingPayment ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
+                    className={`py-4 rounded-xl font-bold text-base text-white transition-all active:scale-95 shadow-md ${
+                      isProcessingPayment 
+                        ? "bg-gray-400 cursor-not-allowed" 
+                        : "bg-green-600 hover:bg-green-700"
+                    } disabled:opacity-50`}
                   >
                     {isProcessingPayment ? "Proses..." : "QRIS"}
                   </button>
