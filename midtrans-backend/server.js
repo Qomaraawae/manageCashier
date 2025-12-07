@@ -1,4 +1,4 @@
-// server.js — FIXED: CORS + Expiry Time
+// server.js — ALTERNATIF: Pakai library moment-timezone
 
 require("dotenv").config();
 const express = require("express");
@@ -8,14 +8,14 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ============ FIX CORS - IZINKAN NETLIFY ============
+// CORS Configuration
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
       "http://localhost:3000",
       "https://storecashier.netlify.app",
-      "https://*.netlify.app", // semua subdomain netlify
+      "https://*.netlify.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -25,9 +25,8 @@ app.use(
 
 app.use(express.json());
 
-// Validasi environment variable
 if (!process.env.MIDTRANS_SERVER_KEY) {
-  console.error("❌ MIDTRANS_SERVER_KEY tidak ditemukan di .env");
+  console.error("❌ MIDTRANS_SERVER_KEY tidak ditemukan");
   process.exit(1);
 }
 
@@ -38,37 +37,48 @@ const MIDTRANS_API = IS_PRODUCTION
 
 console.log(`🚀 Server mode: ${IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}`);
 
-// ============ ENDPOINT UTAMA: CREATE SNAP TOKEN ============
+// Helper function untuk format waktu WIB
+function getWIBExpiryTime(minutesFromNow) {
+  const now = new Date();
+  const expiry = new Date(now.getTime() + minutesFromNow * 60 * 1000);
+
+  // Manual offset ke WIB (UTC+7)
+  const utc = expiry.getTime() + expiry.getTimezoneOffset() * 60000;
+  const wibTime = new Date(utc + 3600000 * 7);
+
+  const yyyy = wibTime.getFullYear();
+  const mm = String(wibTime.getMonth() + 1).padStart(2, "0");
+  const dd = String(wibTime.getDate()).padStart(2, "0");
+  const hh = String(wibTime.getHours()).padStart(2, "0");
+  const min = String(wibTime.getMinutes()).padStart(2, "0");
+  const ss = String(wibTime.getSeconds()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss} +0700`;
+}
+
+// ENDPOINT UTAMA
 app.post("/create-transaction", async (req, res) => {
   try {
     const { amount, orderId, customer } = req.body;
 
-    // Validasi input
     if (!amount || !orderId) {
       return res.status(400).json({
         success: false,
-        error: "amount dan orderId wajib diisi",
+        error: "amount dan orderId wajib",
       });
     }
 
-    console.log(`📝 Creating transaction: ${orderId} - ${amount}`);
+    console.log(`📝 Creating: ${orderId} - Rp ${amount}`);
 
-    // Buat authorization header
     const auth = Buffer.from(process.env.MIDTRANS_SERVER_KEY + ":").toString(
       "base64"
     );
 
-    // ============ FIX EXPIRY TIME - PAKAI UTC ============
-    const now = new Date();
-    const expiryDate = new Date(now.getTime() + 15 * 60 * 1000); // +15 menit dari sekarang
+    // Buat expiry time dengan buffer 3 menit + 15 menit duration
+    const startTime = getWIBExpiryTime(3); // mulai 3 menit dari sekarang
 
-    // Format: YYYY-MM-DD HH:mm:ss +0700
-    const expiryTime =
-      expiryDate.toISOString().slice(0, 19).replace("T", " ") + " +0700";
+    console.log(`⏰ Start time: ${startTime}`);
 
-    console.log(`⏰ Expiry time: ${expiryTime}`);
-
-    // Request Snap Token ke Midtrans
     const snapResponse = await axios.post(
       `${MIDTRANS_API}/snap/v1/transactions`,
       {
@@ -86,7 +96,7 @@ app.post("/create-transaction", async (req, res) => {
           finish: "https://storecashier.netlify.app/payment-success",
         },
         expiry: {
-          start_time: expiryTime,
+          start_time: startTime,
           unit: "minutes",
           duration: 15,
         },
@@ -102,9 +112,8 @@ app.post("/create-transaction", async (req, res) => {
 
     const { token, redirect_url } = snapResponse.data;
 
-    console.log(`✅ Snap token berhasil dibuat untuk order: ${orderId}`);
+    console.log(`✅ Token created: ${orderId}`);
 
-    // Kirim snap token ke frontend
     res.json({
       success: true,
       snap_token: token,
@@ -113,46 +122,29 @@ app.post("/create-transaction", async (req, res) => {
       amount: amount,
     });
   } catch (err) {
-    console.error(
-      "❌ Error create transaction:",
-      err.response?.data || err.message
-    );
+    console.error("❌ Error:", err.response?.data || err.message);
     res.status(500).json({
       success: false,
-      error:
-        err.response?.data?.error_messages?.[0] ||
-        err.message ||
-        "Gagal membuat transaksi",
+      error: err.response?.data?.error_messages?.[0] || err.message,
     });
   }
 });
 
-// ENDPOINT HEALTH CHECK
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
     mode: IS_PRODUCTION ? "PRODUCTION" : "SANDBOX",
     timestamp: new Date().toISOString(),
-    serverTime: new Date().toString(),
+    wibTime: getWIBExpiryTime(0),
   });
 });
 
-// ENDPOINT WEBHOOK (opsional, untuk auto-update status)
 app.post("/webhook", async (req, res) => {
   try {
     const notification = req.body;
-    console.log("📩 Webhook received:", notification);
-
-    // Validasi signature (PENTING untuk produksi)
-    // TODO: Implementasi signature validation
-
-    const { order_id, transaction_status, fraud_status } = notification;
-
-    console.log(`📋 Order ${order_id} status: ${transaction_status}`);
-
-    // Di sini Anda bisa update status di Firestore
-    // await updateDoc(doc(db, "transactions", order_id), { status: transaction_status });
-
+    console.log("📩 Webhook:", notification);
+    const { order_id, transaction_status } = notification;
+    console.log(`📋 Order ${order_id}: ${transaction_status}`);
     res.json({ status: "OK" });
   } catch (err) {
     console.error("❌ Webhook error:", err.message);
@@ -160,15 +152,13 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    error: `Endpoint ${req.method} ${req.path} tidak ditemukan`,
+    error: `${req.method} ${req.path} tidak ditemukan`,
   });
 });
 
-// Error handler global
 app.use((err, req, res, next) => {
   console.error("❌ Unhandled error:", err);
   res.status(500).json({
@@ -178,9 +168,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server berjalan di http://localhost:${PORT}`);
-  console.log(
-    `📡 Mode: ${IS_PRODUCTION ? "PRODUCTION ⚠️" : "SANDBOX (testing)"}`
-  );
-  console.log(`🌐 CORS enabled for: https://storecashier.netlify.app`);
+  console.log(`✅ Server: http://localhost:${PORT}`);
+  console.log(`📡 Mode: ${IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}`);
+  console.log(`🌐 CORS: https://storecashier.netlify.app`);
 });
