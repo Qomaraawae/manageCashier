@@ -1,3 +1,5 @@
+// server.js — FIXED: CORS + Expiry Time
+
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
@@ -6,7 +8,21 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// ============ FIX CORS - IZINKAN NETLIFY ============
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://storecashier.netlify.app",
+      "https://*.netlify.app", // semua subdomain netlify
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 // Validasi environment variable
@@ -22,7 +38,7 @@ const MIDTRANS_API = IS_PRODUCTION
 
 console.log(`🚀 Server mode: ${IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}`);
 
-// ENDPOINT UTAMA: CREATE SNAP TOKEN
+// ============ ENDPOINT UTAMA: CREATE SNAP TOKEN ============
 app.post("/create-transaction", async (req, res) => {
   try {
     const { amount, orderId, customer } = req.body;
@@ -35,10 +51,22 @@ app.post("/create-transaction", async (req, res) => {
       });
     }
 
+    console.log(`📝 Creating transaction: ${orderId} - ${amount}`);
+
     // Buat authorization header
     const auth = Buffer.from(process.env.MIDTRANS_SERVER_KEY + ":").toString(
       "base64"
     );
+
+    // ============ FIX EXPIRY TIME - PAKAI UTC ============
+    const now = new Date();
+    const expiryDate = new Date(now.getTime() + 15 * 60 * 1000); // +15 menit dari sekarang
+
+    // Format: YYYY-MM-DD HH:mm:ss +0700
+    const expiryTime =
+      expiryDate.toISOString().slice(0, 19).replace("T", " ") + " +0700";
+
+    console.log(`⏰ Expiry time: ${expiryTime}`);
 
     // Request Snap Token ke Midtrans
     const snapResponse = await axios.post(
@@ -55,14 +83,10 @@ app.post("/create-transaction", async (req, res) => {
         },
         enabled_payments: ["qris", "gopay", "shopeepay", "other_qris"],
         callbacks: {
-          finish: "https://yourdomain.com/payment-success",
+          finish: "https://storecashier.netlify.app/payment-success",
         },
         expiry: {
-          start_time:
-            new Date(Date.now() + 60 * 1000)
-              .toISOString()
-              .slice(0, 19)
-              .replace("T", " ") + " +0700",
+          start_time: expiryTime,
           unit: "minutes",
           duration: 15,
         },
@@ -109,6 +133,7 @@ app.get("/health", (req, res) => {
     status: "OK",
     mode: IS_PRODUCTION ? "PRODUCTION" : "SANDBOX",
     timestamp: new Date().toISOString(),
+    serverTime: new Date().toString(),
   });
 });
 
@@ -143,9 +168,19 @@ app.use((req, res) => {
   });
 });
 
+// Error handler global
+app.use((err, req, res, next) => {
+  console.error("❌ Unhandled error:", err);
+  res.status(500).json({
+    success: false,
+    error: "Internal server error",
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server berjalan di http://localhost:${PORT}`);
   console.log(
     `📡 Mode: ${IS_PRODUCTION ? "PRODUCTION ⚠️" : "SANDBOX (testing)"}`
   );
+  console.log(`🌐 CORS enabled for: https://storecashier.netlify.app`);
 });
