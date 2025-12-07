@@ -17,6 +17,10 @@ import {
   MdCheckCircle,
   MdError,
   MdWarning,
+  MdShoppingCart,
+  MdAdd,
+  MdRemove,
+  MdDelete,
 } from "react-icons/md";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://managecashier-production.up.railway.app";
@@ -30,25 +34,23 @@ const Notification = ({ message, type, onClose, id }) => {
 
   const getIcon = () => {
     switch (type) {
-      case "success": return <MdCheckCircle size={26} className="text-white" />;
-      case "error":   return <MdError size={26} className="text-white" />;
-      case "warning": return <MdWarning size={26} className="text-white" />;
-      default:        return <MdCheckCircle size={26} className="text-white" />;
+      case "success": return <MdCheckCircle size={20} />;
+      case "error": return <MdError size={20} />;
+      case "warning": return <MdWarning size={20} />;
+      default: return <MdCheckCircle size={20} />;
     }
   };
 
-  const color = type === "error" ? "bg-red-600" : type === "warning" ? "bg-yellow-500 text-gray-900" : "bg-green-600";
+  const color = type === "error" ? "bg-red-500" : type === "warning" ? "bg-amber-500" : "bg-green-500";
 
   return (
-    <div className="fixed inset-x-0 top-4 sm:top-6 z-50 flex justify-center px-4 pointer-events-none">
-      <div className={`pointer-events-auto w-full max-w-md rounded-2xl shadow-2xl ${color} text-white animate-slide-down-fade border border-white/20`}>
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            {getIcon()}
-            <span className="font-semibold text-base sm:text-lg">{message}</span>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20">
-            <MdClose size={22} />
+    <div className="fixed inset-x-0 top-4 z-50 flex justify-center px-4 pointer-events-none">
+      <div className={`pointer-events-auto max-w-sm rounded-lg shadow-lg ${color} text-white`}>
+        <div className="flex items-center gap-2.5 p-3">
+          {getIcon()}
+          <span className="font-medium text-sm flex-1">{message}</span>
+          <button onClick={onClose} className="p-1 rounded hover:bg-white/20">
+            <MdClose size={16} />
           </button>
         </div>
       </div>
@@ -56,7 +58,7 @@ const Notification = ({ message, type, onClose, id }) => {
   );
 };
 
-// ==================== FORMAT RUPIAH & PDF ====================
+// ==================== FORMAT & PDF ====================
 const formatRupiah = (value) => {
   if (isNaN(value)) return "Rp 0";
   return new Intl.NumberFormat("id-ID", {
@@ -98,10 +100,8 @@ const generateReceiptPDF = (saleData, showNotification) => {
     y += 5;
 
     saleData.items.forEach((item) => {
-      const line1 = `${item.name}`;
-      const line2 = `${item.quantity} x ${formatRupiah(item.price)} = ${formatRupiah(item.price * item.quantity)}`;
-      doc.text(line1, margin, y);
-      doc.text(line2, w - margin - 5, y, { align: "right" });
+      doc.text(`${item.name}`, margin, y);
+      doc.text(`${item.quantity} x ${formatRupiah(item.price)} = ${formatRupiah(item.price * item.quantity)}`, w - margin - 5, y, { align: "right" });
       y += 5;
       doc.line(margin, y, w - margin, y);
       y += 5;
@@ -117,19 +117,19 @@ const generateReceiptPDF = (saleData, showNotification) => {
     doc.text("TOTAL :", margin, y);
     doc.text(formatRupiah(total), w - margin - 5, y, { align: "right" });
     y += 5;
-    doc.text(`${saleData.paymentMethod === "QRIS" ? "QRIS MIDTRANS" : "TUNAI"} :`, margin, y);
+    doc.text(`${saleData.paymentMethod === "QRIS" ? "QRIS" : "TUNAI"} :`, margin, y);
     doc.text(formatRupiah(cash), w - margin - 5, y, { align: "right" });
     y += 5;
     doc.text("KEMBALI :", margin, y);
     doc.text(formatRupiah(change), w - margin - 5, y, { align: "right" });
     y += 10;
 
-    doc.text("TERIMA KASIH. SELAMAT BELANJA KEMBALI", margin, y);
+    doc.text("TERIMA KASIH", margin, y);
     doc.save(`nota_${saleId}.pdf`);
     showNotification("Nota berhasil diunduh!", "success");
   } catch (err) {
     console.error(err);
-    showNotification("Gagal membuat nota.", "error");
+    showNotification("Gagal membuat nota", "error");
   }
 };
 
@@ -145,33 +145,25 @@ function Cashier() {
   const [currentOrderId, setCurrentOrderId] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const showNotification = (msg, type) =>
-    setNotification({ message: msg, type, id: Date.now() });
+  const showNotification = (msg, type) => setNotification({ message: msg, type, id: Date.now() });
 
-  // Load Midtrans Snap.js
   useEffect(() => {
     const isProduction = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true';
     const script = document.createElement("script");
-    script.src = isProduction
-      ? "https://app.midtrans.com/snap/snap.js"
-      : "https://app.sandbox.midtrans.com/snap/snap.js";
+    script.src = isProduction ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js";
     script.setAttribute("data-client-key", import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
     script.async = true;
-    script.onload = () => console.log("✅ Midtrans Snap.js loaded");
-    script.onerror = () => showNotification("Gagal load Midtrans script", "error");
     document.body.appendChild(script);
     return () => document.body.contains(script) && document.body.removeChild(script);
   }, []);
 
-  // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const snap = await getDocs(collection(db, "products"));
         setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       } catch (err) {
-        console.error(err);
-        showNotification("Gagal memuat produk.", "error");
+        showNotification("Gagal memuat produk", "error");
       } finally {
         setLoading(false);
       }
@@ -181,9 +173,7 @@ function Cashier() {
 
   const categories = ["Semua", ...new Set(products.map((p) => p.category || "Lainnya"))];
   const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (selectedCategory === "Semua" || p.category === selectedCategory)
+    (p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()) && (selectedCategory === "Semua" || p.category === selectedCategory)
   );
 
   const addToCart = (product) => {
@@ -195,16 +185,11 @@ function Cashier() {
         return prev;
       }
       showNotification(`${product.name} ditambahkan`, "success");
-      return exist
-        ? prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
-        : [...prev, { ...product, quantity: 1 }];
+      return exist ? prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i) : [...prev, { ...product, quantity: 1 }];
     });
   };
 
-  const decreaseQuantity = (id) =>
-    setCart((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity - 1 } : i)).filter((i) => i.quantity > 0)
-    );
+  const decreaseQuantity = (id) => setCart((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity - 1 } : i)).filter((i) => i.quantity > 0));
 
   const removeFromCart = (id) => {
     const item = cart.find((i) => i.id === id);
@@ -214,28 +199,20 @@ function Cashier() {
 
   const calculateTotal = () => cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
-  // BAYAR TUNAI
   const completeTransaction = async () => {
     if (cart.length === 0) return showNotification("Keranjang kosong", "warning");
-
     for (const item of cart) {
       const p = products.find((x) => x.id === item.id);
       if (p && p.stock < item.quantity) return showNotification(`Stok ${item.name} tidak cukup`, "error");
     }
-
     const total = calculateTotal();
     const cash = parseInt(cashAmount) || 0;
     if (cash < total) return showNotification("Uang tidak cukup", "warning");
 
     try {
       const saleData = {
-        customerName: customerName || "Pembeli Langsung",
-        items: cart.map((i) => ({
-          productId: i.id,
-          name: i.name,
-          price: i.price,
-          quantity: i.quantity,
-        })),
+        customerName: customerName || "Pembeli",
+        items: cart.map((i) => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
         total,
         cashAmount: cash,
         change: cash - total,
@@ -252,97 +229,45 @@ function Cashier() {
 
       const snap = await getDocs(collection(db, "products"));
       setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-
       generateReceiptPDF(saleData, showNotification);
       setCart([]);
       setCustomerName("");
       setCashAmount("");
-      showNotification("Transaksi tunai berhasil!", "success");
+      showNotification("Transaksi berhasil!", "success");
     } catch (err) {
-      console.error(err);
-      showNotification("Gagal simpan transaksi", "error");
+      showNotification("Gagal menyimpan transaksi", "error");
     }
   };
 
-  // BAYAR QRIS MIDTRANS (SNAP POPUP)
   const payWithMidtrans = async () => {
-    if (cart.length === 0 || isProcessingPayment) return;
-    
-    if (!window.snap) {
-      showNotification("Midtrans Snap belum siap, coba lagi", "error");
-      return;
-    }
-
+    if (cart.length === 0 || isProcessingPayment || !window.snap) return;
     setIsProcessingPayment(true);
-    showNotification("Membuat transaksi QRIS...", "warning");
+    showNotification("Membuat transaksi...", "warning");
 
     const total = calculateTotal();
     const orderId = `INV-${Date.now()}`;
     setCurrentOrderId(orderId);
 
     try {
-      console.log("📡 Request ke:", `${API_BASE_URL}/create-transaction`);
-      
       const res = await fetch(`${API_BASE_URL}/create-transaction`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: total,
-          orderId,
-          customer: { 
-            name: customerName || "Pembeli", 
-            email: "customer@example.com", 
-            phone: "081234567890" 
-          },
-        }),
+        body: JSON.stringify({ amount: total, orderId, customer: { name: customerName || "Pembeli", email: "customer@example.com", phone: "081234567890" } }),
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errText}`);
-      }
-
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      
-      if (!data.success || !data.snap_token) {
-        throw new Error(data.error || "Snap token tidak ditemukan");
-      }
+      if (!data.success || !data.snap_token) throw new Error(data.error);
 
-      console.log("✅ Snap token diterima, membuka popup...");
+      await setDoc(doc(db, "transactions", orderId), { orderId, total, status: "pending", createdAt: new Date() });
 
-      // Simpan transaksi pending di Firestore
-      await setDoc(doc(db, "transactions", orderId), {
-        orderId,
-        total,
-        status: "pending",
-        createdAt: new Date(),
-      });
-
-      // Buka popup Snap
       window.snap.pay(data.snap_token, {
-        onSuccess: (result) => {
-          console.log("✅ Pembayaran sukses:", result);
-          finalizePayment("paid", orderId);
-        },
-        onPending: (result) => {
-          console.log("⏳ Pembayaran pending:", result);
-          showNotification("Menunggu pembayaran...", "warning");
-          setIsProcessingPayment(false);
-        },
-        onError: (result) => {
-          console.error("❌ Error pembayaran:", result);
-          showNotification("Pembayaran gagal!", "error");
-          setIsProcessingPayment(false);
-        },
-        onClose: () => {
-          console.log("🚪 Popup ditutup");
-          showNotification("Popup pembayaran ditutup", "warning");
-          setIsProcessingPayment(false);
-        },
+        onSuccess: () => finalizePayment("paid", orderId),
+        onPending: () => { showNotification("Menunggu pembayaran", "warning"); setIsProcessingPayment(false); },
+        onError: () => { showNotification("Pembayaran gagal", "error"); setIsProcessingPayment(false); },
+        onClose: () => { showNotification("Popup ditutup", "warning"); setIsProcessingPayment(false); },
       });
-
     } catch (err) {
-      console.error("❌ Error:", err);
       showNotification("Error: " + err.message, "error");
       setIsProcessingPayment(false);
     }
@@ -350,169 +275,103 @@ function Cashier() {
 
   const finalizePayment = async (status, orderId) => {
     setIsProcessingPayment(false);
-    if (status !== "paid") return showNotification("Pembayaran tidak berhasil", "error");
+    if (status !== "paid") return showNotification("Pembayaran gagal", "error");
 
     try {
-      // Update stok produk
       for (const item of cart) {
         const p = products.find((x) => x.id === item.id);
-        await updateDoc(doc(db, "products", item.id), { 
-          stock: p.stock - item.quantity 
-        });
+        await updateDoc(doc(db, "products", item.id), { stock: p.stock - item.quantity });
       }
-      
-      // Refresh products
       const snap = await getDocs(collection(db, "products"));
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      // Simpan sales record
       const saleData = {
-        customerName: customerName || "QRIS Midtrans",
-        items: cart.map(i => ({ 
-          productId: i.id, 
-          name: i.name, 
-          price: i.price, 
-          quantity: i.quantity 
-        })),
+        customerName: customerName || "QRIS",
+        items: cart.map(i => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
         total: calculateTotal(),
         cashAmount: calculateTotal(),
         change: 0,
         timestamp: new Date(),
-        saleId: orderId || currentOrderId,
+        saleId: orderId,
         paymentMethod: "QRIS",
       };
       await addDoc(collection(db, "sales"), saleData);
-
-      // Update status transaksi
-      await updateDoc(doc(db, "transactions", orderId || currentOrderId), {
-        status: "paid",
-        paidAt: new Date(),
-      });
-
-      // Generate PDF
+      await updateDoc(doc(db, "transactions", orderId), { status: "paid", paidAt: new Date() });
       generateReceiptPDF(saleData, showNotification);
 
-      // Reset form
       setCart([]);
       setCustomerName("");
       setCashAmount("");
-      showNotification("Pembayaran QRIS berhasil! Terima kasih", "success");
+      showNotification("Pembayaran berhasil!", "success");
     } catch (err) {
-      console.error("❌ Gagal finalize:", err);
       showNotification("Gagal menyimpan transaksi", "error");
     }
   };
 
-  // ==================== RENDER ====================
   return (
-    <div className="animate-fade-in p-6">
-      {notification && (
-        <Notification 
-          message={notification.message} 
-          type={notification.type} 
-          id={notification.id} 
-          onClose={() => setNotification(null)} 
-        />
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-3 md:p-5">
+      {notification && <Notification message={notification.message} type={notification.type} id={notification.id} onClose={() => setNotification(null)} />}
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Kasir</h1>
-
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Nama Pelanggan (opsional)
-        </label>
-        <input
-          type="text"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="Masukkan nama pelanggan"
-          className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="max-w-7xl mx-auto mb-4">
+        <div className="bg-white rounded-lg shadow-sm border p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-bold text-gray-800">Kasir</h1>
+              <p className="text-xs text-gray-500">Kelola transaksi</p>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <MdShoppingCart size={18} />
+              <span className="text-sm font-medium">{cart.length} item</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* KIRI: DAFTAR PRODUK */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Daftar Produk</h2>
-          <div className="mb-4 relative">
-            <MdSearch className="absolute left-3 top-3 text-gray-500" size={20} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari produk..."
-              className="w-full pl-10 pr-10 p-2 border rounded"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="absolute right-3 top-3">
-                <MdClose size={20} />
-              </button>
-            )}
+      <div className="max-w-7xl mx-auto mb-3">
+        <div className="bg-white rounded-lg shadow-sm border p-3">
+          <label className="block text-xs font-medium text-gray-700 mb-1.5">Nama Pelanggan (opsional)</label>
+          <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Masukkan nama" className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="bg-white rounded-lg shadow-sm border p-3">
+          <h2 className="text-sm font-semibold text-gray-800 mb-3">Daftar Produk</h2>
+          
+          <div className="mb-3 relative">
+            <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cari produk..." className="w-full pl-9 pr-9 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2"><MdClose size={16} /></button>}
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-wrap gap-1.5">
             {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                  selectedCategory === cat 
-                    ? "bg-blue-500 text-white" 
-                    : "bg-gray-200"
-                }`}
-              >
-                {cat}
-              </button>
+              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${selectedCategory === cat ? "bg-blue-500 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>{cat}</button>
             ))}
           </div>
 
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
             {loading ? (
-              <p className="text-center text-gray-500 py-8">Memuat produk...</p>
+              <p className="text-center text-gray-500 py-8 text-sm">Memuat...</p>
             ) : filteredProducts.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">Produk tidak ditemukan</p>
+              <p className="text-center text-gray-500 py-8 text-sm">Produk tidak ditemukan</p>
             ) : (
               filteredProducts.map((p) => {
                 const inCart = cart.find((i) => i.id === p.id);
                 const sisa = p.stock - (inCart?.quantity || 0);
                 return (
-                  <div key={p.id} className="p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
-                    <div className="flex items-start gap-4">
-                      <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                        <img
-                          src={p.imageUrl || "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"}
-                          alt={p.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { 
-                            e.target.src = "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"; 
-                          }}
-                        />
+                  <div key={p.id} className="p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 border">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-12 h-12 flex-shrink-0 bg-white rounded border overflow-hidden">
+                        <img src={p.imageUrl || "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"} alt={p.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"; }} />
                       </div>
-
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 mb-1 truncate">{p.name}</h3>
-                        <p className="text-xs text-gray-500 mb-2">{p.category || "Lainnya"}</p>
-                        <p className="text-lg font-bold text-blue-600 mb-1">{formatRupiah(p.price)}</p>
-                        <p className={`text-sm font-medium ${
-                          sisa === 0 ? "text-red-500" : 
-                          sisa < 5 ? "text-orange-500" : 
-                          "text-green-600"
-                        }`}>
-                          Stok: {p.stock} {inCart && `(sisa: ${sisa})`}
-                        </p>
+                        <h3 className="font-semibold text-gray-800 text-sm truncate">{p.name}</h3>
+                        <p className="text-xs text-gray-500">{p.category || "Lainnya"}</p>
+                        <p className="text-sm font-bold text-blue-600">{formatRupiah(p.price)}</p>
+                        <p className={`text-xs font-medium ${sisa === 0 ? "text-red-500" : sisa < 5 ? "text-orange-500" : "text-green-600"}`}>Stok: {p.stock} {inCart && `(sisa: ${sisa})`}</p>
                       </div>
-
-                      <button
-                        onClick={() => addToCart(p)}
-                        disabled={p.stock === 0}
-                        className={`flex-shrink-0 w-12 h-12 rounded-lg font-bold text-xl transition-all ${
-                          p.stock === 0 
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed" 
-                            : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-sm"
-                        }`}
-                      >
-                        {p.stock === 0 ? "X" : "+"}
-                      </button>
+                      <button onClick={() => addToCart(p)} disabled={p.stock === 0} className={`w-9 h-9 rounded-lg font-bold text-lg ${p.stock === 0 ? "bg-gray-200 text-gray-400" : "bg-blue-500 text-white hover:bg-blue-600 active:scale-95"}`}>{p.stock === 0 ? "×" : "+"}</button>
                     </div>
                   </div>
                 );
@@ -521,135 +380,71 @@ function Cashier() {
           </div>
         </div>
 
-        {/* KANAN: KERANJANG */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Keranjang</h2>
+        <div className="bg-white rounded-lg shadow-sm border p-3">
+          <h2 className="text-sm font-semibold text-gray-800 mb-3">Keranjang</h2>
+          
           {cart.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">Keranjang kosong</div>
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+              <MdShoppingCart size={40} className="mb-2 opacity-50" />
+              <p className="text-sm">Keranjang kosong</p>
+            </div>
           ) : (
             <>
-              <div className="max-h-80 overflow-y-auto space-y-3 mb-6">
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-3">
                 {cart.map((item) => (
-                  <div key={item.id} className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                        <img 
-                          src={item.imageUrl || "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"} 
-                          alt={item.name} 
-                          className="w-full h-full object-cover" 
-                        />
+                  <div key={item.id} className="p-2.5 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 flex-shrink-0 bg-white rounded border overflow-hidden">
+                        <img src={item.imageUrl || "https://res.cloudinary.com/ddxlfwarp/image/upload/v1733021162/default-product_ktvkol.png"} alt={item.name} className="w-full h-full object-cover" />
                       </div>
-
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 mb-1 truncate">{item.name}</h3>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {formatRupiah(item.price)} × {item.quantity}
-                        </p>
-                        <p className="text-lg font-bold text-green-600">
-                          {formatRupiah(item.price * item.quantity)}
-                        </p>
+                        <h3 className="font-semibold text-gray-800 text-sm truncate">{item.name}</h3>
+                        <p className="text-xs text-gray-500">{formatRupiah(item.price)} × {item.quantity}</p>
+                        <p className="text-sm font-bold text-green-600">{formatRupiah(item.price * item.quantity)}</p>
                       </div>
-
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                          <button 
-                            onClick={() => decreaseQuantity(item.id)} 
-                            className="w-8 h-8 flex items-center justify-center bg-white rounded text-gray-700 hover:bg-gray-200 font-bold transition-colors"
-                          >
-                            −
-                          </button>
-                          <span className="w-10 text-center font-semibold text-gray-900">
-                            {item.quantity}
-                          </span>
-                          <button 
-                            onClick={() => addToCart(products.find(p => p.id === item.id))} 
-                            className="w-8 h-8 flex items-center justify-center bg-white rounded text-gray-700 hover:bg-gray-200 font-bold transition-colors"
-                          >
-                            +
-                          </button>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center bg-white rounded border">
+                          <button onClick={() => decreaseQuantity(item.id)} className="w-6 h-6 flex items-center justify-center hover:bg-gray-100"><MdRemove size={14} /></button>
+                          <span className="w-7 text-center text-sm font-semibold">{item.quantity}</span>
+                          <button onClick={() => addToCart(products.find(p => p.id === item.id))} className="w-6 h-6 flex items-center justify-center hover:bg-gray-100"><MdAdd size={14} /></button>
                         </div>
-                        <button 
-                          onClick={() => removeFromCart(item.id)} 
-                          className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
-                        >
-                          Hapus
-                        </button>
+                        <button onClick={() => removeFromCart(item.id)} className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs hover:bg-red-100 flex items-center justify-center"><MdDelete size={13} /></button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-300">
-                  <span className="text-gray-600 font-medium">Total Belanja</span>
-                  <span className="text-3xl font-bold text-gray-900">
-                    {formatRupiah(calculateTotal())}
-                  </span>
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 border">
+                <div className="flex items-center justify-between mb-3 pb-2.5 border-b">
+                  <span className="text-sm text-gray-600 font-medium">Total</span>
+                  <span className="text-xl font-bold text-gray-800">{formatRupiah(calculateTotal())}</span>
                 </div>
 
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Jumlah Tunai
-                  </label>
-                  <input
-                    type="number"
-                    value={cashAmount}
-                    onChange={(e) => setCashAmount(e.target.value)}
-                    placeholder="Masukkan jumlah uang"
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                  />
+                <div className="mb-2.5">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Jumlah Tunai</label>
+                  <input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Masukkan jumlah" className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                 </div>
 
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <button 
-                    onClick={() => setCashAmount(calculateTotal())} 
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm"
-                  >
-                    Uang Pas
-                  </button>
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  <button onClick={() => setCashAmount(calculateTotal())} className="px-2.5 py-1.5 bg-blue-500 text-white rounded text-xs font-medium hover:bg-blue-600">Pas</button>
                   {[10000, 20000, 50000, 100000].map((v) => (
-                    <button 
-                      key={v} 
-                      onClick={() => setCashAmount(v)} 
-                      className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      {formatRupiah(v).replace('Rp ', 'Rp')}
-                    </button>
+                    <button key={v} onClick={() => setCashAmount(v)} className="px-2.5 py-1.5 bg-white border rounded text-xs font-medium hover:bg-gray-50">{formatRupiah(v).replace('Rp ', 'Rp')}</button>
                   ))}
                 </div>
 
                 {cashAmount && (
-                  <div className="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                  <div className="mb-2.5 p-2.5 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex items-center justify-between">
-                      <span className="text-green-700 font-medium">Kembalian</span>
-                      <span className="text-2xl font-bold text-green-600">
-                        {formatRupiah((parseInt(cashAmount) || 0) - calculateTotal())}
-                      </span>
+                      <span className="text-xs text-green-700 font-medium">Kembalian</span>
+                      <span className="text-base font-bold text-green-600">{formatRupiah((parseInt(cashAmount) || 0) - calculateTotal())}</span>
                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={completeTransaction}
-                    disabled={isProcessingPayment || cart.length === 0}
-                    className="py-4 bg-blue-600 text-white rounded-xl font-bold text-base hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shadow-md"
-                  >
-                    Bayar Tunai
-                  </button>
-
-                  <button
-                    onClick={payWithMidtrans}
-                    disabled={isProcessingPayment || cart.length === 0}
-                    className={`py-4 rounded-xl font-bold text-base text-white transition-all active:scale-95 shadow-md ${
-                      isProcessingPayment 
-                        ? "bg-gray-400 cursor-not-allowed" 
-                        : "bg-green-600 hover:bg-green-700"
-                    } disabled:opacity-50`}
-                  >
-                    {isProcessingPayment ? "Proses..." : "QRIS"}
-                  </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={completeTransaction} disabled={isProcessingPayment || cart.length === 0} className="py-2.5 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50 active:scale-95">Tunai</button>
+                  <button onClick={payWithMidtrans} disabled={isProcessingPayment || cart.length === 0} className={`py-2.5 rounded-lg text-sm font-semibold text-white active:scale-95 ${isProcessingPayment ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"} disabled:opacity-50`}>{isProcessingPayment ? "Proses..." : "QRIS"}</button>
                 </div>
               </div>
             </>
