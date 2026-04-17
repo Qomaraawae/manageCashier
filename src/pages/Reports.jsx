@@ -140,7 +140,7 @@ function Reports() {
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -207,21 +207,16 @@ function Reports() {
   useEffect(() => {
     let filtered = sales;
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (dateFilter) {
+  const [year, month, day] = dateFilter.split('-').map(Number);
+  const selected = new Date(year, month - 1, day);
 
-    // Filter Tanggal
-    filtered = filtered.filter(item => {
-      const date = item.timestamp instanceof Date ? item.timestamp : item.timestamp.toDate();
-      const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-      switch (dateFilter) {
-        case 'today': return itemDate.getTime() === today.getTime();
-        case 'week': return date >= new Date(today.setDate(today.getDate() - 7));
-        case 'month': return date >= new Date(today.setMonth(today.getMonth() - 1));
-        default: return true;
-      }
-    });
+  filtered = filtered.filter(item => {
+    const date = item.timestamp instanceof Date ? item.timestamp : item.timestamp.toDate();
+    const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return itemDate.getTime() === selected.getTime();
+  });
+}
 
     // Filter Status
     if (statusFilter !== 'all') {
@@ -252,12 +247,12 @@ function Reports() {
   }, [searchTerm, dateFilter, statusFilter, methodFilter, sales]);
 
   const resetFilter = () => {
-    setSearchTerm('');
-    setDateFilter('all');
-    setStatusFilter('all');
-    setMethodFilter('all');
-    setShowResetConfirm(false);
-  };
+  setSearchTerm('');
+  setDateFilter('');
+  setStatusFilter('all');
+  setMethodFilter('all');
+  setShowResetConfirm(false);
+};
 
   // ==================== EXPORT EXCEL ====================
   const exportToExcel = () => {
@@ -266,7 +261,7 @@ function Reports() {
       const reportHeader = [
         ['LAPORAN PENJUALAN'], [],
         ['Tanggal Cetak', format(new Date(), 'dd MMMM yyyy, HH:mm', { locale: id })],
-        ['Filter', dateFilter === 'all' ? 'Semua' : dateFilter === 'today' ? 'Hari Ini' : dateFilter === 'week' ? '7 Hari Terakhir' : '30 Hari Terakhir'],
+        ['Filter Tanggal', dateFilter || 'Semua'],
         ['Total Transaksi', filteredSales.length],
         ['Total Pendapatan', `Rp ${formatNumber(totalRevenue)}`],
         [], [],
@@ -394,22 +389,28 @@ function Reports() {
 
       {/* FILTER PERIODE */}
       <div className="mb-6 bg-white rounded-lg shadow p-4">
-        <div className="flex items-center space-x-2 mb-3">
-          <MdDateRange className="text-gray-500" size={20} />
-          <h3 className="text-sm font-medium text-gray-700">Filter Periode</h3>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {['all', 'today', 'week', 'month'].map(t => (
-            <button
-              key={t}
-              onClick={() => setDateFilter(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${dateFilter === t ? 'bg-primary-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              {t === 'all' ? 'Semua' : t === 'today' ? 'Hari Ini' : t === 'week' ? '7 Hari Terakhir' : '30 Hari Terakhir'}
-            </button>
-          ))}
-        </div>
-      </div>
+  <div className="flex items-center space-x-2 mb-3">
+    <MdDateRange className="text-gray-500" size={20} />
+    <h3 className="text-sm font-medium text-gray-700">Filter Periode</h3>
+  </div>
+  <div className="flex flex-wrap items-center gap-3">
+  <input
+    type="date"
+    value={dateFilter}
+    onChange={(e) => setDateFilter(e.target.value)}
+    className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+  />
+  {dateFilter && (
+    <button
+      onClick={() => setDateFilter('')}
+      className="flex items-center gap-1 px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 rounded-lg text-xs font-medium transition-colors duration-200"
+    >
+      <MdClose size={14} />
+      Hapus Filter Tanggal
+    </button>
+  )}
+</div>
+</div>
 
       {/* FILTER STATUS & METODE */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,4 +1,3 @@
-// BillingStore.js (versi + QRIS)
 import { create } from 'zustand';
 import { db, functions } from '../firebase';
 import {

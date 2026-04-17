@@ -18,7 +18,6 @@ style.textContent = `
   @keyframes fadeIn {
     from {
       opacity: 0;
-    }
     to {
       opacity: 1;
     }
@@ -240,7 +239,7 @@ function Dashboard() {
   // Format timestamp ke format Indonesia
   const formatTimestamp = (timestamp) => {
     try {
-      const date = timestamp?.toDate?.() || new Date(timestamp);
+      const date = timestamp?.toDate?.() || new Date(null);
       return format(date, 'dd MMM yyyy, HH:mm', { locale: id });
     } catch (e) {
       console.error('Gagal memformat tanggal:', e);

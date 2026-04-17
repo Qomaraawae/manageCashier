@@ -1,5 +1,3 @@
-// server.js — ALTERNATIF: Pakai library moment-timezone
-
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
@@ -15,7 +13,6 @@ app.use(
       "http://localhost:5173",
       "http://localhost:3000",
       "https://storecashier.netlify.app",
-      "https://*.netlify.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -74,8 +71,8 @@ app.post("/create-transaction", async (req, res) => {
       "base64"
     );
 
-    // Buat expiry time dengan buffer 3 menit + 15 menit duration
-    const startTime = getWIBExpiryTime(3); // mulai 3 menit dari sekarang
+    // Buat expiry time dengan buffer
+    const startTime = getWIBExpiryTime(3); 
 
     console.log(`⏰ Start time: ${startTime}`);
 
