@@ -11,11 +11,9 @@ import AuthLayout from './layouts/AuthLayout';
 // Pages
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import Products from './pages/Products';
 import Cashier from './pages/Cashier';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import PaymentSuccess from './pages/PaymentSuccess';
 
 // Components
@@ -44,7 +42,6 @@ function App() {
         {/* Auth Routes */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-          <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
         </Route>
 
         {/* App Routes */}
@@ -53,7 +50,6 @@ function App() {
           <Route path="/cashier" element={user ? <Cashier /> : <Navigate to="/login" />} />
           <Route path="/products" element={user ? <Products /> : <Navigate to="/login" />} />
           <Route path="/reports" element={user ? <Reports /> : <Navigate to="/login" />} />
-          <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" />} />
         </Route>
 
         {/* 404 Route */}

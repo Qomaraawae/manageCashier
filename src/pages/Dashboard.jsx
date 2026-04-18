@@ -2,25 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { 
-  MdPointOfSale, 
-  MdInventory, 
-  MdShoppingBag, 
-  MdInsights, 
+import {
+  MdPointOfSale,
+  MdInventory,
+  MdShoppingBag,
+  MdInsights,
   MdClose
 } from 'react-icons/md';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import id from 'date-fns/locale/id';
 
-// Tambahkan CSS animasi khusus di head
+// Tambahan animasi CSS yang dioptimasi
 const style = document.createElement('style');
 style.textContent = `
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @keyframes scaleIn {
@@ -35,12 +32,16 @@ style.textContent = `
   }
 
   @keyframes bounceSlow {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-5px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  /* Optimasi untuk card agar tidak patah-patah */
+  .card-transform {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
   }
 
   .animate-fade-in {
@@ -119,7 +120,7 @@ function Dashboard() {
         const snapshotProduk = await getDocs(refProduk);
         const jumlahProduk = snapshotProduk.size;
 
-        // Hitung produk dengan stok rendah dan simpan datanya
+        // menghitung produk dengan stok rendah dan simpan datanya
         const produkStokRendah = snapshotProduk.docs
           .map(doc => ({
             id: doc.id,
@@ -163,7 +164,7 @@ function Dashboard() {
           where('timestamp', '<=', endToday),
           orderBy('timestamp', 'desc')
         );
-        
+
         const snapshotPenjualanHariIni = await getDocs(kueriPenjualanHariIni);
 
         const penjualanHariIni = snapshotPenjualanHariIni.docs.map((doc) => {
@@ -270,26 +271,27 @@ function Dashboard() {
     return typeof items === 'number' ? items : 0;
   };
 
-  // Handler untuk klik card
+  // Handler untuk klik card yang dioptimasi
   const handleCardClick = (index) => {
     const card = statCards[index];
-    
+
+    // Langsung beri feedback visual
     setActiveCard(index);
-    
+
     if (card.openModal) {
       setTimeout(() => {
         setShowLowStockModal(true);
         setActiveCard(null);
-      }, 150);
-    } 
+      }, 100);
+    }
     else if (card.navigateTo) {
       setTimeout(() => {
         navigate(card.navigateTo);
         setActiveCard(null);
-      }, 150);
-    } 
+      }, 100);
+    }
     else {
-      setTimeout(() => setActiveCard(null), 200);
+      setTimeout(() => setActiveCard(null), 150);
     }
   };
 
@@ -306,17 +308,20 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Kartu Statistik - Responsive Grid */}
+      {/* Kartu Statistik - Responsive Grid dengan Animasi Optimasi */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {statCards.map((stat, index) => (
           <div
             key={index}
             onClick={() => handleCardClick(index)}
-            className={`bg-white rounded-lg shadow overflow-hidden transition-all duration-300 ease-out ${
-              stat.clickable ? 'cursor-pointer' : 'cursor-default'
-            } ${
-              activeCard === index ? 'scale-95 shadow-inner' : 'scale-100 hover:scale-105 hover:shadow-xl'
-            } ${stat.clickable ? 'ring-2 ring-transparent hover:ring-blue-300 hover:ring-offset-2' : ''}`}
+            className={`
+              bg-white rounded-lg shadow overflow-hidden cursor-pointer
+              transition-all duration-150 ease-out will-change-transform card-transform
+              ${activeCard === index
+                ? 'scale-[0.98] ring-2 ring-blue-300 ring-offset-2'
+                : 'hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98]'
+              }
+            `}
           >
             <div className="p-4 md:p-5">
               <div className="flex items-center">
@@ -330,7 +335,6 @@ function Dashboard() {
                   <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 truncate">
                     {stat.value}
                   </p>
-                  {stat.clickable}
                 </div>
               </div>
             </div>
@@ -340,11 +344,11 @@ function Dashboard() {
 
       {/* Modal Produk Stok Rendah */}
       {showLowStockModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in"
           onClick={() => setShowLowStockModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-out animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
@@ -357,7 +361,7 @@ function Dashboard() {
                 <div>
                   <h2 className="text-lg md:text-xl font-semibold text-gray-900">Produk Stok Rendah</h2>
                   <p className="text-xs md:text-sm text-gray-500">
-                    {lowStockProducts.length} produk memerlukan restok
+                    {lowStockProducts.length} produk memerlukan re-stock
                   </p>
                 </div>
               </div>
@@ -428,9 +432,8 @@ function Dashboard() {
                             </span>
                           </td>
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                            <span className={`text-sm font-semibold transition-all duration-200 ${
-                              product.stock === 0 ? 'text-red-600 animate-pulse' : 'text-orange-600'
-                            }`}>
+                            <span className={`text-sm font-semibold transition-all duration-200 ${product.stock === 0 ? 'text-red-600 animate-pulse' : 'text-orange-600'
+                              }`}>
                               {product.stock}
                             </span>
                           </td>
@@ -438,11 +441,10 @@ function Dashboard() {
                             {formatRupiah(product.price)}
                           </td>
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full transition-all duration-200 ${
-                              product.stock === 0 
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-                            }`}>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full transition-all duration-200 ${product.stock === 0
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                              }`}>
                               {product.stock === 0 ? 'Habis' : 'Stok Rendah'}
                             </span>
                           </td>

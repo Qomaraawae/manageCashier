@@ -199,6 +199,26 @@ function Cashier() {
 
   const calculateTotal = () => cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
+  const getChangeColor = () => {
+    const total = calculateTotal();
+    const cash = parseInt(cashAmount) || 0;
+    const change = cash - total;
+
+    if (change < 0) return "text-red-600 bg-red-50 border-red-200";
+    if (change === 0) return "text-green-600 bg-green-50 border-green-200";
+    return "text-sky-600 bg-sky-50 border-sky-200";
+  };
+
+  const getChangeStatusText = () => {
+    const total = calculateTotal();
+    const cash = parseInt(cashAmount) || 0;
+    const change = cash - total;
+
+    if (change < 0) return "Kekurangan";
+    if (change === 0) return "Pas";
+    return "Kembalian";
+  };
+
   const completeTransaction = async () => {
     if (cart.length === 0) return showNotification("Keranjang kosong", "warning");
     for (const item of cart) {
@@ -334,23 +354,27 @@ function Cashier() {
         </div>
       </div>
 
+      {/* Grid dengan tinggi yang menyesuaikan untuk tablet */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="bg-white rounded-lg shadow-sm border p-3">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">Daftar Produk</h2>
-          
+
+        {/* Kolom Daftar Produk - Full height */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 flex flex-col h-full min-h-[500px] md:min-h-[600px]">
+          <h2 className="text-sm font-semibold text-gray-800 mb-3 sticky top-0 bg-white py-1">Daftar Produk</h2>
+
           <div className="mb-3 relative">
             <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cari produk..." className="w-full pl-9 pr-9 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2"><MdClose size={16} /></button>}
           </div>
 
-          <div className="mb-3 flex flex-wrap gap-1.5">
+          <div className="mb-3 flex flex-wrap gap-1.5 sticky top-[72px] bg-white py-1 z-10">
             {categories.map((cat) => (
               <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${selectedCategory === cat ? "bg-blue-500 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>{cat}</button>
             ))}
           </div>
 
-          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+          {/* Container produk dengan scroll dan tinggi penuh */}
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[300px]">
             {loading ? (
               <p className="text-center text-gray-500 py-8 text-sm">Memuat...</p>
             ) : filteredProducts.length === 0 ? (
@@ -380,17 +404,20 @@ function Cashier() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-3">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">Keranjang</h2>
-          
+        {/* Kolom Keranjang - Full height */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 flex flex-col h-full min-h-[500px] md:min-h-[600px]">
+          <h2 className="text-sm font-semibold text-gray-800 mb-3 sticky top-0 bg-white py-1">Keranjang</h2>
+
           {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <MdShoppingCart size={40} className="mb-2 opacity-50" />
+            <div className="flex flex-col items-center justify-center flex-1 py-16 text-gray-400">
+              <MdShoppingCart size={48} className="mb-2 opacity-50" />
               <p className="text-sm">Keranjang kosong</p>
+              <p className="text-xs mt-1 text-center">Klik (+) pada produk untuk menambahkan</p>
             </div>
           ) : (
             <>
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-3">
+              {/* Container keranjang dengan scroll */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 min-h-[200px]">
                 {cart.map((item) => (
                   <div key={item.id} className="p-2.5 bg-gray-50 rounded-lg border">
                     <div className="flex items-center gap-2.5">
@@ -415,36 +442,43 @@ function Cashier() {
                 ))}
               </div>
 
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 border">
-                <div className="flex items-center justify-between mb-3 pb-2.5 border-b">
-                  <span className="text-sm text-gray-600 font-medium">Total</span>
-                  <span className="text-xl font-bold text-gray-800">{formatRupiah(calculateTotal())}</span>
-                </div>
-
-                <div className="mb-2.5">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Jumlah Tunai</label>
-                  <input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Masukkan jumlah" className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 mb-2.5">
-                  <button onClick={() => setCashAmount(calculateTotal())} className="px-2.5 py-1.5 bg-blue-500 text-white rounded text-xs font-medium hover:bg-blue-600">Pas</button>
-                  {[10000, 20000, 50000, 100000].map((v) => (
-                    <button key={v} onClick={() => setCashAmount(v)} className="px-2.5 py-1.5 bg-white border rounded text-xs font-medium hover:bg-gray-50">{formatRupiah(v).replace('Rp ', 'Rp')}</button>
-                  ))}
-                </div>
-
-                {cashAmount && (
-                  <div className="mb-2.5 p-2.5 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-green-700 font-medium">Kembalian</span>
-                      <span className="text-base font-bold text-green-600">{formatRupiah((parseInt(cashAmount) || 0) - calculateTotal())}</span>
-                    </div>
+              {/* Bagian total dan pembayaran - sticky di bawah */}
+              <div className="sticky bottom-0 bg-white pt-3 border-t mt-auto">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 border">
+                  <div className="flex items-center justify-between mb-3 pb-2.5 border-b">
+                    <span className="text-sm text-gray-600 font-medium">Total</span>
+                    <span className="text-xl font-bold text-gray-800">{formatRupiah(calculateTotal())}</span>
                   </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={completeTransaction} disabled={isProcessingPayment || cart.length === 0} className="py-2.5 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50 active:scale-95">Tunai</button>
-                  <button onClick={payWithMidtrans} disabled={isProcessingPayment || cart.length === 0} className={`py-2.5 rounded-lg text-sm font-semibold text-white active:scale-95 ${isProcessingPayment ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"} disabled:opacity-50`}>{isProcessingPayment ? "Proses..." : "QRIS"}</button>
+                  <div className="mb-2.5">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Jumlah Tunai</label>
+                    <input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Masukkan jumlah" className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    <button onClick={() => setCashAmount(calculateTotal())} className="px-2.5 py-1.5 bg-blue-500 text-white rounded text-xs font-medium hover:bg-blue-600">Pas</button>
+                    {[10000, 20000, 50000, 100000].map((v) => (
+                      <button key={v} onClick={() => setCashAmount(v)} className="px-2.5 py-1.5 bg-white border rounded text-xs font-medium hover:bg-gray-50">{formatRupiah(v).replace('Rp ', 'Rp')}</button>
+                    ))}
+                  </div>
+
+                  {cashAmount && (
+                    <div className={`mb-2.5 p-2.5 rounded-lg border ${getChangeColor()}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-medium ${getChangeColor().split(' ')[0]}`}>
+                          {getChangeStatusText()}
+                        </span>
+                        <span className={`text-base font-bold ${getChangeColor().split(' ')[0]}`}>
+                          {formatRupiah((parseInt(cashAmount) || 0) - calculateTotal())}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={completeTransaction} disabled={isProcessingPayment || cart.length === 0} className="py-2.5 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50 active:scale-95">Tunai</button>
+                    <button onClick={payWithMidtrans} disabled={isProcessingPayment || cart.length === 0} className={`py-2.5 rounded-lg text-sm font-semibold text-white active:scale-95 ${isProcessingPayment ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"} disabled:opacity-50`}>{isProcessingPayment ? "Proses..." : "QRIS"}</button>
+                  </div>
                 </div>
               </div>
             </>

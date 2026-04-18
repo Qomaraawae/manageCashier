@@ -68,15 +68,6 @@ function Login() {
           </button>
         </div>
       </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-primary-500 hover:text-primary-600">
-            Register
-          </Link>
-        </p>
-      </div>
     </div>
   )
 }

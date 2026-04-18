@@ -1,4 +1,3 @@
-// src/pages/PaymentCancel.jsx
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';

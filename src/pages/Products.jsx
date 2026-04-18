@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { MdSearch, MdClose } from 'react-icons/md';
 
 // Fungsi untuk memformat angka ke Rupiah
 const formatRupiah = (value) => {
@@ -62,12 +63,13 @@ const uploadImageToCloudinary = async (file) => {
 
 function Products() {
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     price: '',
     stock: '',
     barcode: '',
-    category: 'Makanan', // Tambahan field kategori dengan default value
+    category: 'Makanan',
     image: null,
   });
   const [previewImage, setPreviewImage] = useState(null);
@@ -77,13 +79,32 @@ function Products() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // State untuk filter dan pencarian
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Semua');
+
+  // Ref untuk form edit
+  const formRef = useRef(null);
+
   // Daftar kategori yang tersedia
   const categories = [
+    'Semua',
     'Makanan',
     'Minuman',
     'Snack',
     'Lainnya'
   ];
+
+  // Fungsi untuk scroll ke form
+  const scrollToForm = () => {
+    if (formRef.current) {
+      formRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'nearest'
+      });
+    }
+  };
 
   // Ambil daftar produk dari Firestore
   useEffect(() => {
@@ -96,6 +117,7 @@ function Products() {
           ...doc.data(),
         }));
         setProducts(productsData);
+        setFilteredProducts(productsData);
         setError(null);
       } catch (err) {
         console.error('Gagal mengambil produk:', err);
@@ -106,6 +128,25 @@ function Products() {
     };
     fetchProducts();
   }, []);
+
+  // Filter produk berdasarkan pencarian dan kategori
+  useEffect(() => {
+    let filtered = products;
+
+    // Filter berdasarkan kategori
+    if (selectedCategory !== 'Semua') {
+      filtered = filtered.filter(product => product.category === selectedCategory);
+    }
+
+    // Filter berdasarkan pencarian nama produk
+    if (searchQuery) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredProducts(filtered);
+  }, [searchQuery, selectedCategory, products]);
 
   // Tangani perubahan input form
   const handleInputChange = (e) => {
@@ -128,7 +169,7 @@ function Products() {
   // Tambah atau edit produk
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { name, price, stock, barcode, category, image } = formData;
+    const { name, price, stock, category, image } = formData;
 
     if (!name || !price || !stock || !category) {
       setError('Nama, harga, stok, dan kategori wajib diisi.');
@@ -156,8 +197,8 @@ function Products() {
         name,
         price: parseInt(price),
         stock: parseInt(stock),
-        barcode: barcode || '',
-        category, // Tambahan field kategori
+        barcode: formData.barcode || '',
+        category,
         imageUrl,
       };
 
@@ -165,11 +206,15 @@ function Products() {
       if (editId) {
         const productRef = doc(db, 'products', editId);
         await updateDoc(productRef, productData);
-        setProducts(products.map(p => p.id === editId ? { id: editId, ...productData } : p));
+        const updatedProducts = products.map(p => p.id === editId ? { id: editId, ...productData } : p);
+        setProducts(updatedProducts);
+        setFilteredProducts(updatedProducts);
         setSuccessMessage('Produk berhasil diperbarui!');
       } else {
         newDoc = await addDoc(collection(db, 'products'), productData);
-        setProducts([...products, { id: newDoc.id, ...productData }]);
+        const updatedProducts = [...products, { id: newDoc.id, ...productData }];
+        setProducts(updatedProducts);
+        setFilteredProducts(updatedProducts);
         setSuccessMessage('Produk berhasil ditambahkan!');
       }
 
@@ -190,19 +235,23 @@ function Products() {
 
   // Hapus produk
   const handleDelete = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'products', id));
-      setProducts(products.filter(product => product.id !== id));
-      setSuccessMessage('Produk berhasil dihapus!');
-      setError(null);
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      console.error('Gagal menghapus produk:', err);
-      setError('Gagal menghapus produk. Coba lagi.');
+    if (window.confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
+      try {
+        await deleteDoc(doc(db, 'products', id));
+        const updatedProducts = products.filter(product => product.id !== id);
+        setProducts(updatedProducts);
+        setFilteredProducts(updatedProducts);
+        setSuccessMessage('Produk berhasil dihapus!');
+        setError(null);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } catch (err) {
+        console.error('Gagal menghapus produk:', err);
+        setError('Gagal menghapus produk. Coba lagi.');
+      }
     }
   };
 
-  // Mulai edit produk
+  // Mulai edit produk dengan auto scroll ke form
   const startEdit = (product) => {
     if (previewImage) {
       URL.revokeObjectURL(previewImage);
@@ -212,11 +261,16 @@ function Products() {
       price: product.price.toString(),
       stock: product.stock.toString(),
       barcode: product.barcode || '',
-      category: product.category || 'Lainnya', // Tambahan field kategori
+      category: product.category || 'Lainnya',
       image: null,
     });
     setPreviewImage(product.imageUrl || null);
     setEditId(product.id);
+
+    // Scroll ke form setelah state update
+    setTimeout(() => {
+      scrollToForm();
+    }, 100);
   };
 
   return (
@@ -234,8 +288,8 @@ function Products() {
         </div>
       )}
 
-      {/* Form Tambah/Edit Produk */}
-      <div className="mb-8 bg-white p-6 rounded-lg shadow">
+      {/* Form Tambah/Edit Produk dengan ref */}
+      <div ref={formRef} className="mb-8 bg-white p-6 rounded-lg shadow scroll-mt-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           {editId ? 'Edit Produk' : 'Tambah Produk'}
         </h2>
@@ -261,7 +315,7 @@ function Products() {
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Kategori produk"
             >
-              {categories.map((cat) => (
+              {categories.filter(cat => cat !== 'Semua').map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
@@ -324,7 +378,7 @@ function Products() {
           <div className="sm:col-span-2 flex space-x-4">
             <button
               type="submit"
-              className="btn bg-primary-500 text-white hover:bg-primary-600"
+              className="btn bg-primary-500 text-white hover:bg-primary-600 px-4 py-2 rounded-lg"
               aria-label={editId ? 'Simpan perubahan produk' : 'Tambah produk'}
               disabled={submitting}
             >
@@ -341,7 +395,7 @@ function Products() {
                   setPreviewImage(null);
                   setEditId(null);
                 }}
-                className="btn bg-gray-500 text-white hover:bg-gray-600"
+                className="btn bg-gray-500 text-white hover:bg-gray-600 px-4 py-2 rounded-lg"
                 aria-label="Batal edit produk"
               >
                 Batal
@@ -353,7 +407,51 @@ function Products() {
 
       {/* Daftar Produk */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <h2 className="p-6 text-lg font-semibold text-gray-900">Daftar Produk</h2>
+        <div className="p-6 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Daftar Produk</h2>
+
+          {/* Filter Kategori dan Pencarian */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Filter Kategori */}
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative flex-1 sm:max-w-xs">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MdSearch className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cari produk..."
+                className="input pl-10 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent px-4 py-2"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <MdClose className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -385,18 +483,27 @@ function Products() {
               {loading ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                    Memuat produk...
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                      <span className="ml-2">Memuat produk...</span>
+                    </div>
                   </td>
                 </tr>
-              ) : products.length === 0 ? (
+              ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                    Tidak ada produk ditemukan.
+                  <td colSpan="7" className="px-6 py-8 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <MdSearch size={48} className="mb-3" />
+                      <p className="text-gray-500 font-medium">Tidak ada produk ditemukan</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        {searchQuery ? 'Coba ubah kata kunci pencarian' : 'Belum ada produk untuk kategori ini'}
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
+                filteredProducts.map((product) => (
+                  <tr key={product.id} className="hover:bg-gray-50 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap">
                       {product.imageUrl ? (
                         <img
@@ -421,7 +528,9 @@ function Products() {
                       {formatRupiah(product.price)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.stock}
+                      <span className={`font-medium ${product.stock <= 5 ? 'text-orange-500' : product.stock === 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                        {product.stock}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {product.barcode || 'T/A'}
@@ -429,14 +538,14 @@ function Products() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => startEdit(product)}
-                        className="text-primary-500 hover:text-primary-600 mr-4"
+                        className="text-primary-500 hover:text-primary-600 mr-4 transition-colors"
                         aria-label={`Edit ${product.name}`}
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
-                        className="text-red-500 hover:text-red-600"
+                        className="text-red-500 hover:text-red-600 transition-colors"
                         aria-label={`Hapus ${product.name}`}
                       >
                         Hapus
@@ -448,6 +557,15 @@ function Products() {
             </tbody>
           </table>
         </div>
+
+        {/* Footer dengan informasi jumlah produk */}
+        {!loading && filteredProducts.length > 0 && (
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <p className="text-sm text-gray-600">
+              Menampilkan <span className="font-semibold">{filteredProducts.length}</span> dari <span className="font-semibold">{products.length}</span> produk
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

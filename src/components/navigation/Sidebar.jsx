@@ -28,7 +28,6 @@ function Sidebar({ isOpen, onClose }) {
     { name: 'Cashier', path: '/cashier', icon: <MdPointOfSale size={24} /> },
     { name: 'Products', path: '/products', icon: <MdShoppingBag size={24} /> },
     { name: 'Reports', path: '/reports', icon: <MdInsights size={24} /> },
-    { name: 'Settings', path: '/settings', icon: <MdSettings size={24} /> },
   ]
 
   // Reset translateX saat sidebar ditutup

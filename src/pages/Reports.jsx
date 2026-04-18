@@ -14,6 +14,10 @@ import {
   MdClose,
   MdAccessTime,
   MdCancel,
+  MdNavigateBefore,
+  MdNavigateNext,
+  MdFirstPage,
+  MdLastPage,
 } from 'react-icons/md';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -75,7 +79,7 @@ const formatNumber = (value) => {
   return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(value);
 };
 
-// ==================== GENERATE PDF NOTA (EXACTLY SAMA DENGAN ASLI) ====================
+// ==================== GENERATE PDF NOTA ====================
 const generateReceiptPDF = (saleData, showNotification) => {
   try {
     const doc = new jsPDF({ format: 'a5' });
@@ -135,6 +139,126 @@ const generateReceiptPDF = (saleData, showNotification) => {
   }
 };
 
+// ==================== KOMPONEN PAGINATION ====================
+const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageChange, onItemsPerPageChange }) => {
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pageNumbers.push(i);
+        pageNumbers.push('...');
+        pageNumbers.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pageNumbers.push(1);
+        pageNumbers.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pageNumbers.push(i);
+      } else {
+        pageNumbers.push(1);
+        pageNumbers.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pageNumbers.push(i);
+        pageNumbers.push('...');
+        pageNumbers.push(totalPages);
+      }
+    }
+    
+    return pageNumbers;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-600">Tampilkan</span>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+          className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value={10}>10</option>
+          <option value={15}>15</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+        </select>
+        <span className="text-sm text-gray-600">data per halaman</span>
+      </div>
+      
+      <div className="text-sm text-gray-600">
+        Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} transaksi
+      </div>
+      
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          className={`p-2 rounded-lg transition-colors ${
+            currentPage === 1
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <MdFirstPage size={20} />
+        </button>
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`p-2 rounded-lg transition-colors ${
+            currentPage === 1
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <MdNavigateBefore size={20} />
+        </button>
+        
+        {getPageNumbers().map((page, index) => (
+          <button
+            key={index}
+            onClick={() => typeof page === 'number' && onPageChange(page)}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              currentPage === page
+                ? 'bg-primary-500 text-white'
+                : page === '...'
+                ? 'text-gray-400 cursor-default'
+                : 'text-gray-600 hover:bg-gray-200'
+            }`}
+            disabled={page === '...'}
+          >
+            {page}
+          </button>
+        ))}
+        
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`p-2 rounded-lg transition-colors ${
+            currentPage === totalPages
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <MdNavigateNext size={20} />
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          className={`p-2 rounded-lg transition-colors ${
+            currentPage === totalPages
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <MdLastPage size={20} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ==================== KOMPONEN UTAMA ====================
 function Reports() {
   const [sales, setSales] = useState([]);
@@ -148,6 +272,10 @@ function Reports() {
   const [totalItems, setTotalItems] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [notification, setNotification] = useState(null);
+  
+  // State untuk pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const showNotification = (message, type) => setNotification({ message, type });
 
@@ -208,15 +336,15 @@ function Reports() {
     let filtered = sales;
 
     if (dateFilter) {
-  const [year, month, day] = dateFilter.split('-').map(Number);
-  const selected = new Date(year, month - 1, day);
+      const [year, month, day] = dateFilter.split('-').map(Number);
+      const selected = new Date(year, month - 1, day);
 
-  filtered = filtered.filter(item => {
-    const date = item.timestamp instanceof Date ? item.timestamp : item.timestamp.toDate();
-    const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    return itemDate.getTime() === selected.getTime();
-  });
-}
+      filtered = filtered.filter(item => {
+        const date = item.timestamp instanceof Date ? item.timestamp : item.timestamp.toDate();
+        const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        return itemDate.getTime() === selected.getTime();
+      });
+    }
 
     // Filter Status
     if (statusFilter !== 'all') {
@@ -239,6 +367,7 @@ function Reports() {
     }
 
     setFilteredSales(filtered);
+    setCurrentPage(1); // Reset ke halaman pertama saat filter berubah
 
     const revenue = filtered
       .filter(s => s.paymentStatus === 'paid' || s.paymentStatus === 'cash')
@@ -247,12 +376,13 @@ function Reports() {
   }, [searchTerm, dateFilter, statusFilter, methodFilter, sales]);
 
   const resetFilter = () => {
-  setSearchTerm('');
-  setDateFilter('');
-  setStatusFilter('all');
-  setMethodFilter('all');
-  setShowResetConfirm(false);
-};
+    setSearchTerm('');
+    setDateFilter('');
+    setStatusFilter('all');
+    setMethodFilter('all');
+    setShowResetConfirm(false);
+    setCurrentPage(1);
+  };
 
   // ==================== EXPORT EXCEL ====================
   const exportToExcel = () => {
@@ -304,6 +434,12 @@ function Reports() {
       showNotification('Gagal mengunduh Excel.', 'error');
     }
   };
+
+  // Hitung data untuk halaman saat ini
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
 
   if (loading) {
     return (
@@ -389,28 +525,28 @@ function Reports() {
 
       {/* FILTER PERIODE */}
       <div className="mb-6 bg-white rounded-lg shadow p-4">
-  <div className="flex items-center space-x-2 mb-3">
-    <MdDateRange className="text-gray-500" size={20} />
-    <h3 className="text-sm font-medium text-gray-700">Filter Periode</h3>
-  </div>
-  <div className="flex flex-wrap items-center gap-3">
-  <input
-    type="date"
-    value={dateFilter}
-    onChange={(e) => setDateFilter(e.target.value)}
-    className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-  />
-  {dateFilter && (
-    <button
-      onClick={() => setDateFilter('')}
-      className="flex items-center gap-1 px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 rounded-lg text-xs font-medium transition-colors duration-200"
-    >
-      <MdClose size={14} />
-      Hapus Filter Tanggal
-    </button>
-  )}
-</div>
-</div>
+        <div className="flex items-center space-x-2 mb-3">
+          <MdDateRange className="text-gray-500" size={20} />
+          <h3 className="text-sm font-medium text-gray-700">Filter Periode</h3>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          {dateFilter && (
+            <button
+              onClick={() => setDateFilter('')}
+              className="flex items-center gap-1 px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 rounded-lg text-xs font-medium transition-colors duration-200"
+            >
+              <MdClose size={14} />
+              Hapus Filter Tanggal
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* FILTER STATUS & METODE */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -445,7 +581,7 @@ function Reports() {
         </div>
       </div>
 
-      {/* TABEL */}
+      {/* TABEL DENGAN SCROLL HORIZONTAL */}
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
         <div className="p-4 border-b border-gray-200 bg-gray-50">
           <div className="relative">
@@ -462,100 +598,104 @@ function Reports() {
           </div>
         </div>
 
+        {/* Container dengan overflow-x-auto untuk scroll horizontal */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID Transaksi</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pelanggan</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal & Waktu</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Item</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status Pembayaran</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSales.length === 0 ? (
+          <div className="min-w-[1000px]">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      <MdOutlineSearch size={48} className="mb-3" />
-                      <p className="text-gray-500 font-medium">Tidak ada data penjualan</p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        {searchTerm ? 'Coba ubah kata kunci pencarian' : 'Belum ada transaksi untuk filter ini'}
-                      </p>
-                    </div>
-                  </td>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">No</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID Transaksi</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pelanggan</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal & Waktu</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Item</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status Pembayaran</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
                 </tr>
-              ) : (
-                filteredSales.map((sale, index) => {
-                  const totalItems = Array.isArray(sale.items)
-                    ? sale.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
-                    : 0;
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {currentSales.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center text-gray-400">
+                        <MdOutlineSearch size={48} className="mb-3" />
+                        <p className="text-gray-500 font-medium">Tidak ada data penjualan</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          {searchTerm ? 'Coba ubah kata kunci pencarian' : 'Belum ada transaksi untuk filter ini'}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  currentSales.map((sale, index) => {
+                    const totalItems = Array.isArray(sale.items)
+                      ? sale.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+                      : 0;
 
-                  return (
-                    <tr key={sale.id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">#{sale.id.substring(0, 8)}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{sale.customerName}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {format(sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(), 'dd MMM yyyy', { locale: id })}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {format(sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(), 'HH:mm', { locale: id })}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {totalItems} item
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <PaymentStatusBadge paymentMethod={sale.paymentMethod} paymentStatus={sale.paymentStatus} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <span className="text-sm font-semibold text-green-600">{formatRupiah(sale.total)}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => generateReceiptPDF(sale, showNotification)}
-                          className="inline-flex items-center px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium shadow-sm hover:shadow-md"
-                        >
-                          <MdPictureAsPdf size={16} className="mr-1" />
-                          PDF
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                    return (
+                      <tr key={sale.id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white z-10">
+                          {indexOfFirstItem + index + 1}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-mono font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">#{sale.id.substring(0, 8)}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{sale.customerName}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {format(sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(), 'dd MMM yyyy', { locale: id })}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {format(sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(), 'HH:mm', { locale: id })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {totalItems} item
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <PaymentStatusBadge paymentMethod={sale.paymentMethod} paymentStatus={sale.paymentStatus} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <span className="text-sm font-semibold text-green-600">{formatRupiah(sale.total)}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => generateReceiptPDF(sale, showNotification)}
+                            className="inline-flex items-center px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                          >
+                            <MdPictureAsPdf size={16} className="mr-1" />
+                            PDF
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        {/* Pagination Component */}
         {filteredSales.length > 0 && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-gray-600">
-                Menampilkan <span className="font-semibold">{filteredSales.length}</span> transaksi
-              </p>
-              <p className="text-sm font-semibold text-gray-900">
-                Total: <span className="text-green-600 text-lg">{formatRupiah(totalRevenue)}</span>
-              </p>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={filteredSales.length}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
         )}
       </div>
 
       {/* ANIMASI NOTIFIKASI */}
-      <style jsx>{`
+      <style>{`
         @keyframes slide-in-right {
           from { transform: translateX(100%); opacity: 0; }
           to   { transform: translateX(0); opacity: 1; }

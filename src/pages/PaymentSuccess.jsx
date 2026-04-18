@@ -1,4 +1,3 @@
-// src/pages/PaymentSuccess.jsx
 import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { MdCheckCircle, MdAccessTime, MdError } from "react-icons/md";
