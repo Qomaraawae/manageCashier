@@ -35,7 +35,7 @@ const useBillingStore = create((set, get) => ({
 
   setPaymentMethod: (method) => set({ paymentMethod: method }),
 
-  // === FUNGSI BARU: Checkout dengan QRIS ===
+  // Checkout dengan QRIS ===
   checkoutWithQRIS: async () => {
     const { cart, total, clearCart } = get();
 
@@ -77,10 +77,10 @@ const useBillingStore = create((set, get) => ({
         if (data?.status === 'paid') {
           toast.success('Pembayaran QRIS berhasil!', { id: 'qris' });
           clearCart();
-          set({ 
-            isWaitingPayment: false, 
+          set({
+            isWaitingPayment: false,
             currentTransactionId: null,
-            unsubscribeListener: null 
+            unsubscribeListener: null
           });
           // Print struk otomatis
           window.print();
@@ -96,7 +96,7 @@ const useBillingStore = create((set, get) => ({
     }
   },
 
-  // === Checkout TUNAI (tetap seperti semula) ===
+  // Checkout TUNAI (tetap seperti semula)
   checkout: async () => {
     const { cart, total, clearCart } = get();
 
@@ -123,7 +123,7 @@ const useBillingStore = create((set, get) => ({
     }
   },
 
-  scanBarcode: (barcode) => { /* sama */ },
+  scanBarcode: (barcode) => { },
 }));
 
 export default useBillingStore;

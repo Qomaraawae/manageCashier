@@ -33,11 +33,11 @@ const PaymentStatusBadge = ({ paymentMethod, paymentStatus }) => {
   }
 
   const config = {
-    paid:    { color: 'bg-green-100 text-green-800', icon: <MdCheckCircle size={14} className="mr-1" />, label: 'Success' },
+    paid: { color: 'bg-green-100 text-green-800', icon: <MdCheckCircle size={14} className="mr-1" />, label: 'Success' },
     pending: { color: 'bg-yellow-100 text-yellow-800', icon: <MdAccessTime size={14} className="mr-1" />, label: 'Pending' },
-    failed:  { color: 'bg-red-100 text-red-800',     icon: <MdError size={14} className="mr-1" />,      label: 'Gagal' },
-    cancel:  { color: 'bg-gray-100 text-gray-800',   icon: <MdCancel size={14} className="mr-1" />,    label: 'Cancel' },
-    expire:  { color: 'bg-gray-100 text-gray-800',   icon: <MdCancel size={14} className="mr-1" />,    label: 'Kadaluarsa' },
+    failed: { color: 'bg-red-100 text-red-800', icon: <MdError size={14} className="mr-1" />, label: 'Gagal' },
+    cancel: { color: 'bg-gray-100 text-gray-800', icon: <MdCancel size={14} className="mr-1" />, label: 'Cancel' },
+    expire: { color: 'bg-gray-100 text-gray-800', icon: <MdCancel size={14} className="mr-1" />, label: 'Kadaluarsa' },
   };
 
   const status = config[paymentStatus] || config.failed;
@@ -94,7 +94,7 @@ const generateReceiptPDF = (saleData, showNotification) => {
     doc.text('Jl. WLRO No. 72, Sorosutan', margin, y); y += 5;
     doc.text('NPWP 01.010.001.0-101.010', margin, y); y += 8;
 
-    const store = "Point Stasiun Bojong Gede 082268255699";
+    const store = "Stasiun Kicau Mania 082268255699";
     const addr = "Dagaran, Sorosutan, Yogyakarta 55162";
     doc.text(store, margin, y); y += 5;
     doc.text(addr, margin, y); y += 5;
@@ -144,7 +144,7 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageC
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisible = 5;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
@@ -166,7 +166,7 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageC
         pageNumbers.push(totalPages);
       }
     }
-    
+
     return pageNumbers;
   };
 
@@ -186,71 +186,66 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageC
         </select>
         <span className="text-sm text-gray-600">data per halaman</span>
       </div>
-      
+
       <div className="text-sm text-gray-600">
         Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} transaksi
       </div>
-      
+
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className={`p-2 rounded-lg transition-colors ${
-            currentPage === 1
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:bg-gray-200'
-          }`}
+          className={`p-2 rounded-lg transition-colors ${currentPage === 1
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
         >
           <MdFirstPage size={20} />
         </button>
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={`p-2 rounded-lg transition-colors ${
-            currentPage === 1
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:bg-gray-200'
-          }`}
+          className={`p-2 rounded-lg transition-colors ${currentPage === 1
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
         >
           <MdNavigateBefore size={20} />
         </button>
-        
+
         {getPageNumbers().map((page, index) => (
           <button
             key={index}
             onClick={() => typeof page === 'number' && onPageChange(page)}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-              currentPage === page
-                ? 'bg-primary-500 text-white'
-                : page === '...'
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === page
+              ? 'bg-primary-500 text-white'
+              : page === '...'
                 ? 'text-gray-400 cursor-default'
                 : 'text-gray-600 hover:bg-gray-200'
-            }`}
+              }`}
             disabled={page === '...'}
           >
             {page}
           </button>
         ))}
-        
+
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={`p-2 rounded-lg transition-colors ${
-            currentPage === totalPages
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:bg-gray-200'
-          }`}
+          className={`p-2 rounded-lg transition-colors ${currentPage === totalPages
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
         >
           <MdNavigateNext size={20} />
         </button>
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className={`p-2 rounded-lg transition-colors ${
-            currentPage === totalPages
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:bg-gray-200'
-          }`}
+          className={`p-2 rounded-lg transition-colors ${currentPage === totalPages
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
         >
           <MdLastPage size={20} />
         </button>
@@ -259,7 +254,7 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageC
   );
 };
 
-// ==================== KOMPONEN UTAMA ====================
+// KOMPONEN UTAMA
 function Reports() {
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
@@ -272,14 +267,14 @@ function Reports() {
   const [totalItems, setTotalItems] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [notification, setNotification] = useState(null);
-  
+
   // State untuk pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const showNotification = (message, type) => setNotification({ message, type });
 
-  // ==================== FETCH DATA ====================
+  // FETCH DATA
   useEffect(() => {
     const ambilPenjualan = async () => {
       try {
@@ -317,7 +312,7 @@ function Reports() {
 
         const items = data.reduce((sum, s) =>
           sum + (Array.isArray(s.items) ? s.items.reduce((a, i) => a + (i.quantity || 0), 0) : 0)
-        , 0);
+          , 0);
 
         setTotalRevenue(revenue);
         setTotalItems(items);
@@ -331,7 +326,7 @@ function Reports() {
     ambilPenjualan();
   }, []);
 
-  // ==================== FILTERING ====================
+  // FILTERING
   useEffect(() => {
     let filtered = sales;
 
@@ -384,7 +379,7 @@ function Reports() {
     setCurrentPage(1);
   };
 
-  // ==================== EXPORT EXCEL ====================
+  // EXPORT EXCEL
   const exportToExcel = () => {
     try {
       const workbook = XLSX.utils.book_new();

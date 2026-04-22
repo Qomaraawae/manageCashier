@@ -21,11 +21,15 @@ import {
   MdAdd,
   MdRemove,
   MdDelete,
+  MdNavigateBefore,
+  MdNavigateNext,
+  MdFirstPage,
+  MdLastPage,
 } from "react-icons/md";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://managecashier-production.up.railway.app";
 
-// ==================== NOTIFIKASI ====================
+// NOTIFIKASI
 const Notification = ({ message, type, onClose, id }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
@@ -58,7 +62,6 @@ const Notification = ({ message, type, onClose, id }) => {
   );
 };
 
-// ==================== FORMAT & PDF ====================
 const formatRupiah = (value) => {
   if (isNaN(value)) return "Rp 0";
   return new Intl.NumberFormat("id-ID", {
@@ -133,6 +136,121 @@ const generateReceiptPDF = (saleData, showNotification) => {
   }
 };
 
+// ==================== KOMPONEN PAGINATION ====================
+const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageChange, onItemsPerPageChange }) => {
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pageNumbers.push(i);
+        pageNumbers.push('...');
+        pageNumbers.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pageNumbers.push(1);
+        pageNumbers.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pageNumbers.push(i);
+      } else {
+        pageNumbers.push(1);
+        pageNumbers.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pageNumbers.push(i);
+        pageNumbers.push('...');
+        pageNumbers.push(totalPages);
+      }
+    }
+
+    return pageNumbers;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-3 pt-3 border-t">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-600">Tampilkan</span>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+          className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value={6}>6</option>
+          <option value={9}>9</option>
+          <option value={12}>12</option>
+          <option value={15}>15</option>
+        </select>
+        <span className="text-xs text-gray-600">produk</span>
+      </div>
+
+      <div className="text-xs text-gray-600">
+        {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} produk
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          className={`p-1.5 rounded-lg transition-colors ${currentPage === 1
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdFirstPage size={16} />
+        </button>
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`p-1.5 rounded-lg transition-colors ${currentPage === 1
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdNavigateBefore size={16} />
+        </button>
+
+        {getPageNumbers().map((page, index) => (
+          <button
+            key={index}
+            onClick={() => typeof page === 'number' && onPageChange(page)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${currentPage === page
+              ? 'bg-primary-500 text-white'
+              : page === '...'
+                ? 'text-gray-400 cursor-default'
+                : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            disabled={page === '...'}
+          >
+            {page}
+          </button>
+        ))}
+
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`p-1.5 rounded-lg transition-colors ${currentPage === totalPages
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdNavigateNext size={16} />
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          className={`p-1.5 rounded-lg transition-colors ${currentPage === totalPages
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdLastPage size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function Cashier() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
@@ -144,6 +262,10 @@ function Cashier() {
   const [notification, setNotification] = useState(null);
   const [currentOrderId, setCurrentOrderId] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // State untuk pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
 
   const showNotification = (msg, type) => setNotification({ message: msg, type, id: Date.now() });
 
@@ -175,6 +297,17 @@ function Cashier() {
   const filteredProducts = products.filter(
     (p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()) && (selectedCategory === "Semua" || p.category === selectedCategory)
   );
+
+  // Reset ke halaman pertama saat filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
+  // Hitung data untuk halaman saat ini
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   const addToCart = (product) => {
     if (product.stock === 0) return showNotification(`Stok ${product.name} habis`, "warning");
@@ -357,7 +490,7 @@ function Cashier() {
       {/* Grid dengan tinggi yang menyesuaikan untuk tablet */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-        {/* Kolom Daftar Produk - Full height */}
+        {/* Kolom Daftar Produk - Full height dengan Pagination */}
         <div className="bg-white rounded-lg shadow-sm border p-3 flex flex-col h-full min-h-[500px] md:min-h-[600px]">
           <h2 className="text-sm font-semibold text-gray-800 mb-3 sticky top-0 bg-white py-1">Daftar Produk</h2>
 
@@ -373,14 +506,14 @@ function Cashier() {
             ))}
           </div>
 
-          {/* Container produk dengan scroll dan tinggi penuh */}
+          {/* Container produk dengan scroll dan pagination */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[300px]">
             {loading ? (
               <p className="text-center text-gray-500 py-8 text-sm">Memuat...</p>
-            ) : filteredProducts.length === 0 ? (
+            ) : currentProducts.length === 0 ? (
               <p className="text-center text-gray-500 py-8 text-sm">Produk tidak ditemukan</p>
             ) : (
-              filteredProducts.map((p) => {
+              currentProducts.map((p) => {
                 const inCart = cart.find((i) => i.id === p.id);
                 const sisa = p.stock - (inCart?.quantity || 0);
                 return (
@@ -402,6 +535,18 @@ function Cashier() {
               })
             )}
           </div>
+
+          {/* Pagination Component */}
+          {!loading && filteredProducts.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredProducts.length}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          )}
         </div>
 
         {/* Kolom Keranjang - Full height */}
