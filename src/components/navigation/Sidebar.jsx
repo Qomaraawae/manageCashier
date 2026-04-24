@@ -1,13 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
-import { 
-  MdDashboard, 
-  MdPointOfSale, 
-  MdInventory, 
-  MdShoppingBag, 
-  MdInsights, 
-  MdSettings, 
-  MdClose 
+import {
+  MdDashboard,
+  MdPointOfSale,
+  MdInventory,
+  MdShoppingBag,
+  MdInsights,
+  MdSettings,
+  MdClose
 } from 'react-icons/md'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -42,7 +42,7 @@ function Sidebar({ isOpen, onClose }) {
   const onTouchStart = (e) => {
     // Hanya aktifkan swipe di mobile
     if (window.innerWidth >= 768) return
-    
+
     setTouchStart(e.targetTouches[0].clientX)
     setTouchCurrent(e.targetTouches[0].clientX)
     setStartTime(Date.now())
@@ -52,7 +52,7 @@ function Sidebar({ isOpen, onClose }) {
   const onTouchMove = (e) => {
     // Hanya aktifkan swipe di mobile
     if (!touchStart || !isDragging || window.innerWidth >= 768) return
-    
+
     const currentTouch = e.targetTouches[0].clientX
     const diff = currentTouch - touchStart
 
@@ -63,7 +63,7 @@ function Sidebar({ isOpen, onClose }) {
       // Resistance effect saat geser ke kanan
       setTranslateX(diff * 0.3)
     }
-    
+
     setTouchCurrent(currentTouch)
   }
 
@@ -100,7 +100,7 @@ function Sidebar({ isOpen, onClose }) {
   const onMouseDown = (e) => {
     // Hanya aktifkan di mobile
     if (window.innerWidth >= 768) return
-    
+
     setTouchStart(e.clientX)
     setTouchCurrent(e.clientX)
     setStartTime(Date.now())
@@ -109,7 +109,7 @@ function Sidebar({ isOpen, onClose }) {
 
   const onMouseMove = (e) => {
     if (!touchStart || !isDragging || window.innerWidth >= 768) return
-    
+
     const currentPos = e.clientX
     const diff = currentPos - touchStart
 
@@ -120,7 +120,7 @@ function Sidebar({ isOpen, onClose }) {
       // Resistance effect saat geser ke kanan
       setTranslateX(diff * 0.3)
     }
-    
+
     setTouchCurrent(currentPos)
   }
 
@@ -183,8 +183,8 @@ function Sidebar({ isOpen, onClose }) {
     <>
       {/* Mobile Sidebar Backdrop - Hanya tampil di mobile */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-gray-600 md:hidden transition-opacity duration-200" 
+        <div
+          className="fixed inset-0 z-40 bg-gray-600 md:hidden transition-opacity duration-200"
           style={{
             opacity: getBackdropOpacity()
           }}
@@ -192,9 +192,9 @@ function Sidebar({ isOpen, onClose }) {
           aria-hidden="true"
         ></div>
       )}
-      
+
       {/* Sidebar */}
-      <aside 
+      <aside
         ref={sidebarRef}
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl
           md:sticky md:top-0 md:h-screen md:translate-x-0
@@ -203,7 +203,7 @@ function Sidebar({ isOpen, onClose }) {
         `}
         style={{
           transform: isOpen && window.innerWidth < 768
-            ? `translateX(${translateX}px)` 
+            ? `translateX(${translateX}px)`
             : undefined
         }}
         onTouchStart={onTouchStart}
@@ -213,15 +213,15 @@ function Sidebar({ isOpen, onClose }) {
       >
         {/* Logo and close button */}
         <div className="flex items-center justify-between p-4 border-b">
-          <Link 
-            to="/" 
-            className="flex items-center space-x-2" 
+          <Link
+            to="/"
+            className="flex items-center space-x-2"
             onClick={() => window.innerWidth < 768 && onClose()}
           >
-            <span className="text-xl md:text-2xl font-bold text-primary-500">MiniMarket</span>
+            <span className="text-xl md:text-2xl font-bold text-primary-500">StoreCashier</span>
           </Link>
           {/* Tombol close hanya tampil di mobile */}
-          <button 
+          <button
             className="p-2 md:hidden text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             onClick={onClose}
             aria-label="Close sidebar"
@@ -229,7 +229,7 @@ function Sidebar({ isOpen, onClose }) {
             <MdClose size={24} />
           </button>
         </div>
-        
+
         {/* Navigation Links */}
         <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
           <ul className="space-y-2">
@@ -237,11 +237,10 @@ function Sidebar({ isOpen, onClose }) {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`flex items-center p-3 rounded-lg transition-colors text-sm md:text-base ${
-                    pathname === item.path 
-                      ? 'bg-primary-500 text-white' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`flex items-center p-3 rounded-lg transition-colors text-sm md:text-base ${pathname === item.path
+                    ? 'bg-primary-500 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                   onClick={() => window.innerWidth < 768 && onClose()}
                 >
                   <div className="flex items-center w-full">
@@ -253,7 +252,7 @@ function Sidebar({ isOpen, onClose }) {
             ))}
           </ul>
         </nav>
-        
+
         {/* User Info & Logout */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-white">
           <div className="flex items-center mb-3 md:mb-4">
