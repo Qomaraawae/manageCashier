@@ -88,7 +88,7 @@ const generateReceiptPDF = (saleData, showNotification) => {
     doc.text("NPWP 01.010.001.0-101.010", margin, y);
     y += 8;
 
-    const store = "Point Stasiun Bojong Gede 082268255699";
+    const store = "Point Kidul Lapangan Kae 082268255699";
     const addr = "Dagaran, Sorosutan, Yogyakarta 55162";
     doc.text(store, margin, y);
     y += 5;
