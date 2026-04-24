@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { MdSearch, MdClose } from 'react-icons/md';
+import { MdSearch, MdClose, MdNavigateBefore, MdNavigateNext, MdFirstPage, MdLastPage } from 'react-icons/md';
 
 // Fungsi untuk memformat angka ke Rupiah
 const formatRupiah = (value) => {
@@ -61,6 +61,122 @@ const uploadImageToCloudinary = async (file) => {
   }
 };
 
+// KOMPONEN PAGINATION
+const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageChange, onItemsPerPageChange }) => {
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pageNumbers.push(i);
+        pageNumbers.push('...');
+        pageNumbers.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pageNumbers.push(1);
+        pageNumbers.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pageNumbers.push(i);
+      } else {
+        pageNumbers.push(1);
+        pageNumbers.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pageNumbers.push(i);
+        pageNumbers.push('...');
+        pageNumbers.push(totalPages);
+      }
+    }
+
+    return pageNumbers;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-600">Tampilkan</span>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+          className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value={5}>5</option>
+          <option value={10}>10</option>
+          <option value={15}>15</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+        </select>
+        <span className="text-sm text-gray-600">data per halaman</span>
+      </div>
+
+      <div className="text-sm text-gray-600">
+        Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} produk
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          className={`p-2 rounded-lg transition-colors ${currentPage === 1
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdFirstPage size={20} />
+        </button>
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`p-2 rounded-lg transition-colors ${currentPage === 1
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdNavigateBefore size={20} />
+        </button>
+
+        {getPageNumbers().map((page, index) => (
+          <button
+            key={index}
+            onClick={() => typeof page === 'number' && onPageChange(page)}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === page
+              ? 'bg-primary-500 text-white'
+              : page === '...'
+                ? 'text-gray-400 cursor-default'
+                : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            disabled={page === '...'}
+          >
+            {page}
+          </button>
+        ))}
+
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`p-2 rounded-lg transition-colors ${currentPage === totalPages
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdNavigateNext size={20} />
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          className={`p-2 rounded-lg transition-colors ${currentPage === totalPages
+            ? 'text-gray-400 cursor-not-allowed'
+            : 'text-gray-600 hover:bg-gray-200'
+            }`}
+        >
+          <MdLastPage size={20} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function Products() {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -82,6 +198,10 @@ function Products() {
   // State untuk filter dan pencarian
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
+
+  // State untuk pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   // Ref untuk form edit
   const formRef = useRef(null);
@@ -146,7 +266,14 @@ function Products() {
     }
 
     setFilteredProducts(filtered);
+    setCurrentPage(1); // Reset ke halaman pertama saat filter berubah
   }, [searchQuery, selectedCategory, products]);
+
+  // Hitung data untuk halaman saat ini
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   // Tangani perubahan input form
   const handleInputChange = (e) => {
@@ -489,7 +616,7 @@ function Products() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredProducts.length === 0 ? (
+              ) : currentProducts.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-8 text-center">
                     <div className="flex flex-col items-center justify-center text-gray-400">
@@ -502,7 +629,7 @@ function Products() {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product) => (
+                currentProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap">
                       {product.imageUrl ? (
@@ -558,13 +685,16 @@ function Products() {
           </table>
         </div>
 
-        {/* Footer dengan informasi jumlah produk */}
+        {/* Pagination Component */}
         {!loading && filteredProducts.length > 0 && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
-              Menampilkan <span className="font-semibold">{filteredProducts.length}</span> dari <span className="font-semibold">{products.length}</span> produk
-            </p>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={filteredProducts.length}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
         )}
       </div>
     </div>

@@ -136,113 +136,101 @@ const generateReceiptPDF = (saleData, showNotification) => {
   }
 };
 
-// ==================== KOMPONEN PAGINATION ====================
+// KOMPONEN PAGINATION
 const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageChange, onItemsPerPageChange }) => {
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
+      for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
     } else {
       if (currentPage <= 3) {
         for (let i = 1; i <= 4; i++) pageNumbers.push(i);
-        pageNumbers.push('...');
+        pageNumbers.push("...");
         pageNumbers.push(totalPages);
       } else if (currentPage >= totalPages - 2) {
         pageNumbers.push(1);
-        pageNumbers.push('...');
+        pageNumbers.push("...");
         for (let i = totalPages - 3; i <= totalPages; i++) pageNumbers.push(i);
       } else {
         pageNumbers.push(1);
-        pageNumbers.push('...');
+        pageNumbers.push("...");
         for (let i = currentPage - 1; i <= currentPage + 1; i++) pageNumbers.push(i);
-        pageNumbers.push('...');
+        pageNumbers.push("...");
         pageNumbers.push(totalPages);
       }
     }
-
     return pageNumbers;
   };
 
+  const start = (currentPage - 1) * itemsPerPage + 1;
+  const end = Math.min(currentPage * itemsPerPage, totalItems);
+
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-3 pt-3 border-t">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600">Tampilkan</span>
-        <select
-          value={itemsPerPage}
-          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          <option value={6}>6</option>
-          <option value={9}>9</option>
-          <option value={12}>12</option>
-          <option value={15}>15</option>
-        </select>
-        <span className="text-xs text-gray-600">produk</span>
+    <div className="mt-3 pt-3 border-t space-y-2">
+      {/* Baris 1: Info & per-page */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-500 whitespace-nowrap">
+          {start}–{end} dari <span className="font-medium text-gray-700">{totalItems}</span> produk
+        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 whitespace-nowrap">Tampilkan</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => { onItemsPerPageChange(Number(e.target.value)); onPageChange(1); }}
+            className="border border-gray-300 rounded-md px-1.5 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {[6, 9, 12, 15].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
       </div>
 
-      <div className="text-xs text-gray-600">
-        {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} produk
-      </div>
-
-      <div className="flex items-center gap-1">
+      {/* Baris 2: Tombol navigasi */}
+      <div className="flex items-center justify-center gap-1">
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className={`p-1.5 rounded-lg transition-colors ${currentPage === 1
-            ? 'text-gray-400 cursor-not-allowed'
-            : 'text-gray-600 hover:bg-gray-200'
-            }`}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <MdFirstPage size={16} />
         </button>
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={`p-1.5 rounded-lg transition-colors ${currentPage === 1
-            ? 'text-gray-400 cursor-not-allowed'
-            : 'text-gray-600 hover:bg-gray-200'
-            }`}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <MdNavigateBefore size={16} />
         </button>
 
-        {getPageNumbers().map((page, index) => (
-          <button
-            key={index}
-            onClick={() => typeof page === 'number' && onPageChange(page)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${currentPage === page
-              ? 'bg-primary-500 text-white'
-              : page === '...'
-                ? 'text-gray-400 cursor-default'
-                : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            disabled={page === '...'}
-          >
-            {page}
-          </button>
-        ))}
+        {getPageNumbers().map((page, index) =>
+          page === "..." ? (
+            <span key={`dots-${index}`} className="w-7 h-7 flex items-center justify-center text-xs text-gray-400">···</span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => onPageChange(page)}
+              className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-medium transition-colors ${currentPage === page
+                  ? "bg-blue-500 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+                }`}
+            >
+              {page}
+            </button>
+          )
+        )}
 
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={`p-1.5 rounded-lg transition-colors ${currentPage === totalPages
-            ? 'text-gray-400 cursor-not-allowed'
-            : 'text-gray-600 hover:bg-gray-200'
-            }`}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <MdNavigateNext size={16} />
         </button>
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className={`p-1.5 rounded-lg transition-colors ${currentPage === totalPages
-            ? 'text-gray-400 cursor-not-allowed'
-            : 'text-gray-600 hover:bg-gray-200'
-            }`}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <MdLastPage size={16} />
         </button>
