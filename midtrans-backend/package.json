@@ -1,12 +1,17 @@
 {
   "name": "midtrans-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend for Midtrans payment integration",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "vercel-build": "echo hello"
   },
-  "keywords": [],
+  "keywords": [
+    "midtrans",
+    "payment",
+    "express"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -16,5 +21,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "firebase-admin": "^13.6.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

@@ -19,15 +19,15 @@ function Header({ onOpenSidebar }) {
             >
               <MdMenu size={24} />
             </button>
-            
+
             {/* Logo - Mobile Only */}
             <div className="md:hidden ml-2">
               <Link to="/" className="text-xl font-bold text-primary-500">
-                MiniMarket
+                StoreCashier
               </Link>
             </div>
           </div>
-            <div className="flex items-center">
+          <div className="flex items-center">
             {/* Profile Dropdown */}
             <div className="ml-3 relative">
               <div>
@@ -40,10 +40,10 @@ function Header({ onOpenSidebar }) {
                   </div>
                 </button>
               </div>
-              
+
               {/* Dropdown Menu */}
               {dropdownOpen && (
-                <div 
+                <div
                   className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-colors duration-300 ease-in-out"
                   onClick={() => setDropdownOpen(false)}
                 >
