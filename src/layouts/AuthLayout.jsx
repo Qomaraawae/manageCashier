@@ -7,7 +7,7 @@ function AuthLayout() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link to="/">
           <h2 className="text-center text-3xl font-extrabold text-gray-900">
-            Mini<span className="text-primary-500">Market</span>
+            Store<span className="text-primary-500">Cashier</span>
           </h2>
         </Link>
         <p className="mt-2 text-center text-sm text-gray-600">
