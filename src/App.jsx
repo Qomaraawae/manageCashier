@@ -15,6 +15,8 @@ import Products from './pages/Products';
 import Cashier from './pages/Cashier';
 import Reports from './pages/Reports';
 import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentPending from './pages/PaymentPending';
+import PaymentCancel from './pages/PaymentCancel';
 
 // Components
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -39,21 +41,24 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Routes>
-        {/* Auth Routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+        {/* Auth Routes - Tanpa Layout */}
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+
+        {/* Payment Routes - Tanpa Layout (Akses publik) */}
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-pending" element={<PaymentPending />} />
+        <Route path="/payment-cancel" element={<PaymentCancel />} />
+
+        {/* App Routes - Dengan DashboardLayout & Auth */}
+        <Route element={user ? <DashboardLayout /> : <Navigate to="/login" />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/cashier" element={<Cashier />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/reports" element={<Reports />} />
         </Route>
 
-        {/* App Routes */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" />} />
-          <Route path="/cashier" element={user ? <Cashier /> : <Navigate to="/login" />} />
-          <Route path="/products" element={user ? <Products /> : <Navigate to="/login" />} />
-          <Route path="/reports" element={user ? <Reports /> : <Navigate to="/login" />} />
-        </Route>
-
-        {/* 404 Route */}
-        <Route path="/payment-success" element={user ? <PaymentSuccess /> : <Navigate to="/login" />} />
+        {/* 404 - Not Found */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </div>
   );
@@ -67,4 +72,4 @@ function RootApp() {
   );
 }
 
-export default App;
+export default RootApp;
