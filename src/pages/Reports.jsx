@@ -290,6 +290,15 @@ function Reports() {
         const data = salesSnap.docs.map(doc => {
           const d = doc.data();
           const orderId = d.saleId || doc.id;
+
+          // Tentukan paymentStatus
+          let paymentStatus = d.paymentStatus || 'cash'; // ← prioritaskan dari field paymentStatus
+
+          if (d.paymentMethod === 'QRIS' && paymentStatus === 'cash') {
+            // Jika tidak ada paymentStatus, coba dari midtransMap
+            paymentStatus = midtransMap[orderId] || 'pending';
+          }
+
           return {
             id: doc.id,
             customerName: d.customerName || 'Pembeli Langsung',
@@ -299,7 +308,7 @@ function Reports() {
             cashAmount: d.cashAmount || 0,
             change: d.change || 0,
             paymentMethod: d.paymentMethod || 'cash',
-            paymentStatus: d.paymentMethod === 'QRIS' ? (midtransMap[orderId] || 'paid') : 'cash',
+            paymentStatus: paymentStatus,
           };
         });
 

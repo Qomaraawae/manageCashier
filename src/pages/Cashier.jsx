@@ -6,6 +6,8 @@ import {
   doc,
   updateDoc,
   setDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { format } from "date-fns";
@@ -169,7 +171,6 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageC
 
   return (
     <div className="mt-3 pt-3 border-t space-y-2">
-      {/* Baris 1: Info & per-page */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500 whitespace-nowrap">
           {start}–{end} dari <span className="font-medium text-gray-700">{totalItems}</span> produk
@@ -186,7 +187,6 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageC
         </div>
       </div>
 
-      {/* Baris 2: Tombol navigasi */}
       <div className="flex items-center justify-center gap-1">
         <button
           onClick={() => onPageChange(1)}
@@ -211,8 +211,8 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPageC
               key={page}
               onClick={() => onPageChange(page)}
               className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-medium transition-colors ${currentPage === page
-                  ? "bg-blue-500 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                ? "bg-blue-500 text-white"
+                : "text-gray-600 hover:bg-gray-100"
                 }`}
             >
               {page}
@@ -250,6 +250,7 @@ function Cashier() {
   const [notification, setNotification] = useState(null);
   const [currentOrderId, setCurrentOrderId] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [pendingSaleId, setPendingSaleId] = useState(null);
 
   // State untuk pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -286,12 +287,10 @@ function Cashier() {
     (p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()) && (selectedCategory === "Semua" || p.category === selectedCategory)
   );
 
-  // Reset ke halaman pertama saat filter berubah
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory]);
 
-  // Hitung data untuk halaman saat ini
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
@@ -359,6 +358,7 @@ function Cashier() {
         change: cash - total,
         timestamp: new Date(),
         paymentMethod: "cash",
+        paymentStatus: "cash",
       };
       const ref = await addDoc(collection(db, "sales"), saleData);
       saleData.saleId = ref.id;
@@ -376,7 +376,34 @@ function Cashier() {
       setCashAmount("");
       showNotification("Transaksi berhasil!", "success");
     } catch (err) {
+      console.error(err);
       showNotification("Gagal menyimpan transaksi", "error");
+    }
+  };
+
+  // Fungsi untuk update status sale
+  const updateSaleStatus = async (orderId, newStatus, saleDocId = null) => {
+    try {
+      let saleQuery;
+      if (saleDocId) {
+        saleQuery = await getDocs(query(collection(db, "sales"), where("__name__", "==", saleDocId)));
+      } else {
+        saleQuery = await getDocs(query(collection(db, "sales"), where("saleId", "==", orderId)));
+      }
+
+      if (!saleQuery.empty) {
+        const saleDoc = saleQuery.docs[0];
+        await updateDoc(doc(db, "sales", saleDoc.id), {
+          paymentStatus: newStatus,
+          ...(newStatus === "paid" && { cashAmount: calculateTotal(), change: 0 })
+        });
+        console.log(`✅ Sale status updated to ${newStatus} for ${orderId}`);
+        return saleDoc.id;
+      }
+      return null;
+    } catch (err) {
+      console.error("Error updating sale status:", err);
+      return null;
     }
   };
 
@@ -389,63 +416,108 @@ function Cashier() {
     const orderId = `INV-${Date.now()}`;
     setCurrentOrderId(orderId);
 
+    // Data untuk sales (akan disimpan sebagai pending)
+    const saleData = {
+      customerName: customerName || "Pembeli QRIS",
+      items: cart.map(i => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
+      total: total,
+      cashAmount: 0,
+      change: 0,
+      timestamp: new Date(),
+      saleId: orderId,
+      paymentMethod: "QRIS",
+      paymentStatus: "pending",  // Status awal pending
+    };
+
     try {
+      // 1. SIMPAN KE SALES DULU dengan status pending
+      const saleRef = await addDoc(collection(db, "sales"), saleData);
+      const newSaleId = saleRef.id;
+      setPendingSaleId(newSaleId);
+      console.log(`✅ Sales pending saved: ${orderId} (${newSaleId})`);
+
+      // 2. Panggil backend untuk membuat transaksi Midtrans
       const res = await fetch(`${API_BASE_URL}/create-transaction`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total, orderId, customer: { name: customerName || "Pembeli", email: "customer@example.com", phone: "081234567890" } }),
+        body: JSON.stringify({
+          amount: total,
+          orderId,
+          customer: {
+            name: customerName || "Pembeli",
+            email: "customer@example.com",
+            phone: "081234567890"
+          }
+        }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!data.success || !data.snap_token) throw new Error(data.error);
 
-      await setDoc(doc(db, "transactions", orderId), { orderId, total, status: "pending", createdAt: new Date() });
+      // 3. SIMPAN KE TRANSACTIONS
+      await setDoc(doc(db, "transactions", orderId), {
+        orderId,
+        total,
+        status: "pending",
+        createdAt: new Date(),
+        customerName: customerName || "Pembeli QRIS",
+        items: cart.map(i => ({ name: i.name, quantity: i.quantity, price: i.price }))
+      });
+      console.log(`✅ Transaction saved: ${orderId}`);
 
+      // 4. Buka popup Midtrans
       window.snap.pay(data.snap_token, {
-        onSuccess: () => finalizePayment("paid", orderId),
-        onPending: () => { showNotification("Menunggu pembayaran", "warning"); setIsProcessingPayment(false); },
-        onError: () => { showNotification("Pembayaran gagal", "error"); setIsProcessingPayment(false); },
-        onClose: () => { showNotification("Popup ditutup", "warning"); setIsProcessingPayment(false); },
+        onSuccess: async () => {
+          // Update status sale menjadi paid
+          await updateSaleStatus(orderId, "paid", newSaleId);
+
+          // Update stok produk
+          for (const item of cart) {
+            const p = products.find((x) => x.id === item.id);
+            await updateDoc(doc(db, "products", item.id), { stock: p.stock - item.quantity });
+          }
+
+          // Update transaction status
+          await updateDoc(doc(db, "transactions", orderId), { status: "paid", paidAt: new Date() });
+
+          // Refresh products
+          const snap = await getDocs(collection(db, "products"));
+          setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+          // Generate nota
+          const finalSaleData = { ...saleData, paymentStatus: "paid", cashAmount: total, change: 0 };
+          generateReceiptPDF(finalSaleData, showNotification);
+
+          setCart([]);
+          setCustomerName("");
+          setCashAmount("");
+          setIsProcessingPayment(false);
+          showNotification("Pembayaran berhasil!", "success");
+        },
+        onPending: () => {
+          showNotification("Menunggu pembayaran", "warning");
+          setIsProcessingPayment(false);
+        },
+        onError: async () => {
+          showNotification("Pembayaran gagal", "error");
+          await updateSaleStatus(orderId, "failed", newSaleId);
+          await updateDoc(doc(db, "transactions", orderId), { status: "failed" });
+          setIsProcessingPayment(false);
+        },
+        onClose: () => {
+          showNotification("Popup ditutup", "warning");
+          setIsProcessingPayment(false);
+        },
       });
     } catch (err) {
+      console.error("Error:", err);
       showNotification("Error: " + err.message, "error");
-      setIsProcessingPayment(false);
-    }
-  };
-
-  const finalizePayment = async (status, orderId) => {
-    setIsProcessingPayment(false);
-    if (status !== "paid") return showNotification("Pembayaran gagal", "error");
-
-    try {
-      for (const item of cart) {
-        const p = products.find((x) => x.id === item.id);
-        await updateDoc(doc(db, "products", item.id), { stock: p.stock - item.quantity });
+      // Update status sale menjadi failed jika ada error
+      if (pendingSaleId) {
+        await updateSaleStatus(orderId, "failed", pendingSaleId);
       }
-      const snap = await getDocs(collection(db, "products"));
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-      const saleData = {
-        customerName: customerName || "QRIS",
-        items: cart.map(i => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
-        total: calculateTotal(),
-        cashAmount: calculateTotal(),
-        change: 0,
-        timestamp: new Date(),
-        saleId: orderId,
-        paymentMethod: "QRIS",
-      };
-      await addDoc(collection(db, "sales"), saleData);
-      await updateDoc(doc(db, "transactions", orderId), { status: "paid", paidAt: new Date() });
-      generateReceiptPDF(saleData, showNotification);
-
-      setCart([]);
-      setCustomerName("");
-      setCashAmount("");
-      showNotification("Pembayaran berhasil!", "success");
-    } catch (err) {
-      showNotification("Gagal menyimpan transaksi", "error");
+      setIsProcessingPayment(false);
     }
   };
 
@@ -475,10 +547,10 @@ function Cashier() {
         </div>
       </div>
 
-      {/* Grid dengan tinggi yang menyesuaikan untuk tablet */}
+      {/* Grid */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-        {/* Kolom Daftar Produk - Full height dengan Pagination */}
+        {/* Kolom Daftar Produk */}
         <div className="bg-white rounded-lg shadow-sm border p-3 flex flex-col h-full min-h-[500px] md:min-h-[600px]">
           <h2 className="text-sm font-semibold text-gray-800 mb-3 sticky top-0 bg-white py-1">Daftar Produk</h2>
 
@@ -494,7 +566,6 @@ function Cashier() {
             ))}
           </div>
 
-          {/* Container produk dengan scroll dan pagination */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[300px]">
             {loading ? (
               <p className="text-center text-gray-500 py-8 text-sm">Memuat...</p>
@@ -524,7 +595,6 @@ function Cashier() {
             )}
           </div>
 
-          {/* Pagination Component */}
           {!loading && filteredProducts.length > 0 && (
             <Pagination
               currentPage={currentPage}
@@ -537,7 +607,7 @@ function Cashier() {
           )}
         </div>
 
-        {/* Kolom Keranjang - Full height */}
+        {/* Kolom Keranjang */}
         <div className="bg-white rounded-lg shadow-sm border p-3 flex flex-col h-full min-h-[500px] md:min-h-[600px]">
           <h2 className="text-sm font-semibold text-gray-800 mb-3 sticky top-0 bg-white py-1">Keranjang</h2>
 
@@ -549,7 +619,6 @@ function Cashier() {
             </div>
           ) : (
             <>
-              {/* Container keranjang dengan scroll */}
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 min-h-[200px]">
                 {cart.map((item) => (
                   <div key={item.id} className="p-2.5 bg-gray-50 rounded-lg border">
@@ -575,7 +644,6 @@ function Cashier() {
                 ))}
               </div>
 
-              {/* Bagian total dan pembayaran - sticky di bawah */}
               <div className="sticky bottom-0 bg-white pt-3 border-t mt-auto">
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 border">
                   <div className="flex items-center justify-between mb-3 pb-2.5 border-b">
