@@ -7,25 +7,13 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // CORS Configuration
-const allowedOrigins = process.env.CORS_ORIGINS 
-  ? process.env.CORS_ORIGINS.split(',')
-  : [
-      "http://localhost:5173",
-      "https://storecashier.netlify.app",
-      "https://flossie-unruinable-tinkly.ngrok-free.dev"
-    ];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://storecashier.netlify.app",
+    "https://midtrans-backend-ashy.vercel.app"
+  ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
@@ -33,59 +21,31 @@ app.use(cors({
 
 app.use(express.json());
 
-// Cek environment variables
-if (!process.env.MIDTRANS_SERVER_KEY) {
-  console.error("❌ MIDTRANS_SERVER_KEY tidak ditemukan");
-}
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Backend is running",
+    timestamp: new Date().toISOString()
+  });
+});
 
-const IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "true";
-const MIDTRANS_API = IS_PRODUCTION
-  ? "https://app.midtrans.com"
-  : "https://app.sandbox.midtrans.com";
-
-console.log(`🚀 Server mode: ${IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}`);
-
-// Helper function untuk format waktu WIB
-function getWIBExpiryTime(minutesFromNow) {
-  const now = new Date();
-  const expiry = new Date(now.getTime() + minutesFromNow * 60 * 1000);
-
-  const utc = expiry.getTime() + expiry.getTimezoneOffset() * 60000;
-  const wibTime = new Date(utc + 3600000 * 7);
-
-  const yyyy = wibTime.getFullYear();
-  const mm = String(wibTime.getMonth() + 1).padStart(2, "0");
-  const dd = String(wibTime.getDate()).padStart(2, "0");
-  const hh = String(wibTime.getHours()).padStart(2, "0");
-  const min = String(wibTime.getMinutes()).padStart(2, "0");
-  const ss = String(wibTime.getSeconds()).padStart(2, "0");
-
-  return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss} +0700`;
-}
-
-// ENDPOINT HEALTH
+// Health check endpoint
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
-    mode: IS_PRODUCTION ? "PRODUCTION" : "SANDBOX",
+    mode: process.env.MIDTRANS_IS_PRODUCTION === "true" ? "PRODUCTION" : "SANDBOX",
     timestamp: new Date().toISOString(),
-    wibTime: getWIBExpiryTime(0),
     message: "Backend is running on Vercel"
   });
 });
 
-// ENDPOINT ROOT
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "Midtrans Backend API is running",
-    endpoints: ["/health", "/create-transaction", "/webhook"],
-    mode: IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"
-  });
-});
-
-// ENDPOINT CREATE TRANSACTION
+// Create transaction endpoint
 app.post("/create-transaction", async (req, res) => {
+  // ✅ Pindahkan console.log ke dalam sini
+  console.log("MIDTRANS_SERVER_KEY exists:", !!process.env.MIDTRANS_SERVER_KEY);
+  console.log("Request body:", req.body);
+  
   try {
     const { amount, orderId, customer } = req.body;
 
@@ -96,10 +56,12 @@ app.post("/create-transaction", async (req, res) => {
       });
     }
 
-    console.log(`📝 Creating: ${orderId} - Rp ${amount}`);
+    const IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "true";
+    const MIDTRANS_API = IS_PRODUCTION
+      ? "https://app.midtrans.com"
+      : "https://app.sandbox.midtrans.com";
 
     const auth = Buffer.from(process.env.MIDTRANS_SERVER_KEY + ":").toString("base64");
-    const startTime = getWIBExpiryTime(3);
 
     const snapResponse = await axios.post(
       `${MIDTRANS_API}/snap/v1/transactions`,
@@ -115,12 +77,7 @@ app.post("/create-transaction", async (req, res) => {
         },
         enabled_payments: ["qris", "gopay", "shopeepay", "other_qris"],
         callbacks: {
-          finish: "https://flossie-unruinable-tinkly.ngrok-free.dev/payment-success",
-        },
-        expiry: {
-          start_time: startTime,
-          unit: "minutes",
-          duration: 15,
+          finish: "https://storecashier.netlify.app/payment-success",
         },
       },
       {
@@ -129,12 +86,11 @@ app.post("/create-transaction", async (req, res) => {
           Authorization: `Basic ${auth}`,
           Accept: "application/json",
         },
+        timeout: 10000,
       }
     );
 
     const { token, redirect_url } = snapResponse.data;
-
-    console.log(`✅ Token created: ${orderId}`);
 
     res.json({
       success: true,
@@ -144,7 +100,7 @@ app.post("/create-transaction", async (req, res) => {
       amount: amount,
     });
   } catch (err) {
-    console.error("❌ Error:", err.response?.data || err.message);
+    console.error("Error:", err.response?.data || err.message);
     res.status(500).json({
       success: false,
       error: err.response?.data?.error_messages?.[0] || err.message,
@@ -152,16 +108,15 @@ app.post("/create-transaction", async (req, res) => {
   }
 });
 
-// ENDPOINT WEBHOOK
+// Webhook endpoint
 app.post("/webhook", async (req, res) => {
   try {
     const notification = req.body;
-    console.log("📩 Webhook:", notification);
     const { order_id, transaction_status } = notification;
-    console.log(`📋 Order ${order_id}: ${transaction_status}`);
+    console.log(`Webhook: Order ${order_id} - ${transaction_status}`);
     res.json({ status: "OK" });
   } catch (err) {
-    console.error("❌ Webhook error:", err.message);
+    console.error("Webhook error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -176,20 +131,19 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error("❌ Unhandled error:", err);
+  console.error("Unhandled error:", err);
   res.status(500).json({
     success: false,
     error: "Internal server error",
   });
 });
 
+// Export untuk Vercel
+module.exports = app;
+
 // Untuk running lokal
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
-    console.log(`✅ Server: http://localhost:${PORT}`);
-    console.log(`📡 Mode: ${IS_PRODUCTION ? "PRODUCTION" : "SANDBOX"}`);
+    console.log(`Server running on port ${PORT}`);
   });
 }
-
-// Export untuk Vercel
-module.exports = app;
