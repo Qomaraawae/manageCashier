@@ -299,11 +299,11 @@ function Dashboard() {
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dasbor</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Dasbor</h1>
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 rounded">
           {error}
         </div>
       )}
@@ -315,10 +315,10 @@ function Dashboard() {
             key={index}
             onClick={() => handleCardClick(index)}
             className={`
-              bg-white rounded-lg shadow overflow-hidden cursor-pointer
+              bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/30 overflow-hidden cursor-pointer
               transition-all duration-150 ease-out will-change-transform card-transform
               ${activeCard === index
-                ? 'scale-[0.98] ring-2 ring-blue-300 ring-offset-2'
+                ? 'scale-[0.98] ring-2 ring-blue-300 dark:ring-blue-500 ring-offset-2 dark:ring-offset-gray-900'
                 : 'hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98]'
               }
             `}
@@ -329,10 +329,10 @@ function Dashboard() {
                   {stat.icon}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs md:text-sm font-medium text-gray-500 truncate mb-1">
+                  <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-300 truncate mb-1">
                     {stat.title}
                   </p>
-                  <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 truncate">
+                  <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
                     {stat.value}
                   </p>
                 </div>
@@ -349,18 +349,18 @@ function Dashboard() {
           onClick={() => setShowLowStockModal(false)}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-out animate-scale-in"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-out animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Modal */}
-            <div className="flex items-center justify-between p-4 md:p-6 border-b bg-gradient-to-r from-orange-50 to-white">
+            <div className="flex items-center justify-between p-4 md:p-6 border-b dark:border-gray-700 bg-gradient-to-r from-orange-50 dark:from-gray-700 to-white dark:to-gray-800">
               <div className="flex items-center">
                 <div className="rounded-md p-2 bg-orange-500 text-white mr-3 animate-bounce-slow">
                   <MdInventory size={24} />
                 </div>
                 <div>
-                  <h2 className="text-lg md:text-xl font-semibold text-gray-900">Produk Stok Rendah</h2>
-                  <p className="text-xs md:text-sm text-gray-500">
+                  <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Produk Stok Rendah</h2>
+                  <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
                     {lowStockProducts.length} produk memerlukan re-stock
                   </p>
                 </div>
@@ -384,32 +384,32 @@ function Dashboard() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Gambar
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Nama Produk
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Kategori
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Stok
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Harga
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Status
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {lowStockProducts.map((product) => (
-                        <tr key={product.id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                             {product.imageUrl ? (
                               <img
@@ -418,32 +418,32 @@ function Dashboard() {
                                 className="w-10 h-10 md:w-12 md:h-12 object-cover rounded transition-transform duration-200 hover:scale-110"
                               />
                             ) : (
-                              <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
+                              <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
                                 T/A
                               </div>
                             )}
                           </td>
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{product.name}</div>
                           </td>
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 transition-all duration-200 hover:bg-blue-200">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 transition-all duration-200 hover:bg-blue-200 dark:hover:bg-blue-900/50">
                               {product.category || 'Lainnya'}
                             </span>
                           </td>
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                            <span className={`text-sm font-semibold transition-all duration-200 ${product.stock === 0 ? 'text-red-600 animate-pulse' : 'text-orange-600'
+                            <span className={`text-sm font-semibold transition-all duration-200 ${product.stock === 0 ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-orange-600 dark:text-orange-400'
                               }`}>
                               {product.stock}
                             </span>
                           </td>
-                          <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                             {formatRupiah(product.price)}
                           </td>
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full transition-all duration-200 ${product.stock === 0
-                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                              : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50'
+                              : 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/50'
                               }`}>
                               {product.stock === 0 ? 'Habis' : 'Stok Rendah'}
                             </span>
@@ -457,7 +457,7 @@ function Dashboard() {
             </div>
 
             {/* Footer Modal */}
-            <div className="p-4 border-t bg-gray-50 flex justify-end space-x-3">
+            <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex justify-end space-x-3">
               <button
                 onClick={() => setShowLowStockModal(false)}
                 className="px-3 md:px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-all duration-200 hover:scale-105 active:scale-95"
@@ -478,25 +478,25 @@ function Dashboard() {
 
       {/* Penjualan Hari Ini */}
       <ErrorBoundary>
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-4 md:p-6 border-b flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/30 overflow-hidden">
+          <div className="p-4 md:p-6 border-b dark:border-gray-700 flex items-center justify-between">
             <div>
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Penjualan Hari Ini</h2>
-              <p className="text-xs md:text-sm text-gray-500 mt-1">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Penjualan Hari Ini</h2>
+              <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {format(new Date(), 'EEEE, dd MMMM yyyy', { locale: id })}
               </p>
             </div>
-            <div className="bg-blue-50 px-3 py-1 rounded-full">
-              <span className="text-sm font-semibold text-blue-600">
+            <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                 {todaySales.length} Transaksi
               </span>
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     ID Transaksi
                   </th>
                   <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -513,37 +513,37 @@ function Dashboard() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="px-4 md:px-6 py-4 text-center text-gray-500 text-sm">
+                    <td colSpan="5" className="px-4 md:px-6 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
                       Memuat data penjualan...
                     </td>
                   </tr>
                 ) : todaySales.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-4 md:px-6 py-8 text-center text-gray-500">
-                      <MdPointOfSale size={48} className="mx-auto mb-4 text-gray-300" />
+                    <td colSpan="5" className="px-4 md:px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                      <MdPointOfSale size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                       <p className="text-sm font-medium">Belum ada penjualan hari ini</p>
                       <p className="text-xs mt-1">Transaksi akan muncul di sini setelah ada penjualan</p>
                     </td>
                   </tr>
                 ) : (
                   todaySales.map((sale) => (
-                    <tr key={sale.id} className="hover:bg-gray-50">
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
+                    <tr key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 dark:text-white">
                         #{sale.id?.substring(0, 8) || 'T/A'}
                       </td>
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 dark:text-gray-300">
                         {sale.customerName}
                       </td>
                       <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
                         {renderItems(sale.items)}
                       </td>
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium text-green-600">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium text-green-600 dark:text-green-400">
                         {formatRupiah(sale.total || 0)}
                       </td>
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 dark:text-gray-300">
                         {formatTimestamp(sale.timestamp)}
                       </td>
                     </tr>
@@ -552,13 +552,13 @@ function Dashboard() {
               </tbody>
             </table>
           </div>
-          <div className="p-4 border-t bg-gray-50 flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              Total Hari Ini: <span className="font-bold text-green-600">{formatRupiah(stats.dailySales)}</span>
+          <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              Total Hari Ini: <span className="font-bold text-green-600 dark:text-green-400">{formatRupiah(stats.dailySales)}</span>
             </div>
             <Link
               to="/reports"
-              className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+              className="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 text-sm font-medium"
               aria-label="Lihat semua penjualan"
             >
               Lihat semua laporan →

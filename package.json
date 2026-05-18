@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node midtrans-backend/server.js",
-    "dev:frontend": "vite",
+    "dev:frontend": "vite --host",
     "dev:backend": "node midtrans-backend/server.js",
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan,yellow\" \"vite --host\"",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan,yellow\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

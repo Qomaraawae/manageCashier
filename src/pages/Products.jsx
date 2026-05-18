@@ -401,45 +401,45 @@ function Products() {
   };
 
   return (
-    <div className="animate-fade-in p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Kelola Produk</h1>
+    <div className="animate-fade-in p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Kelola Produk</h1>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 rounded transition-colors">
           {error}
         </div>
       )}
       {successMessage && (
-        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+        <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-400 rounded transition-colors">
           {successMessage}
         </div>
       )}
 
       {/* Form Tambah/Edit Produk dengan ref */}
-      <div ref={formRef} className="mb-8 bg-white p-6 rounded-lg shadow scroll-mt-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div ref={formRef} className="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-700/30 scroll-mt-4 transition-colors">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           {editId ? 'Edit Produk' : 'Tambah Produk'}
         </h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nama Produk</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Produk</label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Masukkan nama produk"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               aria-label="Nama produk"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Kategori</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Kategori</label>
             <select
               name="category"
               value={formData.category}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               aria-label="Kategori produk"
             >
               {categories.filter(cat => cat !== 'Semua').map((cat) => (
@@ -450,48 +450,48 @@ function Products() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Harga</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Harga</label>
             <input
               type="number"
               name="price"
               value={formData.price}
               onChange={handleInputChange}
               placeholder="Masukkan harga"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               aria-label="Harga produk"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Stok</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Stok</label>
             <input
               type="number"
               name="stock"
               value={formData.stock}
               onChange={handleInputChange}
               placeholder="Masukkan stok"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               aria-label="Stok produk"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Kode Barcode (opsional)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Barcode (opsional)</label>
             <input
               type="text"
               name="barcode"
               value={formData.barcode}
               onChange={handleInputChange}
               placeholder="Masukkan kode barcode"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               aria-label="Kode barcode"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Gambar Produk (opsional)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Produk (opsional)</label>
             <input
               type="file"
               accept="image/*"
               onChange={handleImageChange}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               aria-label="Unggah gambar produk"
             />
             {previewImage && (
@@ -505,7 +505,7 @@ function Products() {
           <div className="sm:col-span-2 flex space-x-4">
             <button
               type="submit"
-              className="btn bg-primary-500 text-white hover:bg-primary-600 px-4 py-2 rounded-lg"
+              className="btn bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
               aria-label={editId ? 'Simpan perubahan produk' : 'Tambah produk'}
               disabled={submitting}
             >
@@ -522,7 +522,7 @@ function Products() {
                   setPreviewImage(null);
                   setEditId(null);
                 }}
-                className="btn bg-gray-500 text-white hover:bg-gray-600 px-4 py-2 rounded-lg"
+                className="btn bg-gray-500 dark:bg-gray-600 text-white hover:bg-gray-600 dark:hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
                 aria-label="Batal edit produk"
               >
                 Batal
@@ -533,9 +533,9 @@ function Products() {
       </div>
 
       {/* Daftar Produk */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Daftar Produk</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/30 overflow-hidden transition-colors">
+        <div className="p-6 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Daftar Produk</h2>
 
           {/* Filter Kategori dan Pencarian */}
           <div className="flex flex-col sm:flex-row gap-4">
@@ -546,8 +546,8 @@ function Products() {
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat
-                    ? 'bg-primary-500 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-blue-500 dark:bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                 >
                   {cat}
@@ -558,12 +558,12 @@ function Products() {
             {/* Search Bar */}
             <div className="relative flex-1 sm:max-w-xs">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MdSearch className="h-5 w-5 text-gray-400" />
+                <MdSearch className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               </div>
               <input
                 type="text"
                 placeholder="Cari produk..."
-                className="input pl-10 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent px-4 py-2"
+                className="input pl-10 w-full bg-white dark:bg-gray-800 border dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent px-4 py-2 transition-colors"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -572,7 +572,7 @@ function Products() {
                   onClick={() => setSearchQuery('')}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  <MdClose className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  <MdClose className="h-4 w-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" />
                 </button>
               )}
             </div>
@@ -580,38 +580,38 @@ function Products() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Gambar
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Nama
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Kategori
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Harga
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Stok
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Barcode
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Aksi
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                       <span className="ml-2">Memuat produk...</span>
                     </div>
                   </td>
@@ -619,10 +619,10 @@ function Products() {
               ) : currentProducts.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-8 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                       <MdSearch size={48} className="mb-3" />
-                      <p className="text-gray-500 font-medium">Tidak ada produk ditemukan</p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-gray-500 dark:text-gray-400 font-medium">Tidak ada produk ditemukan</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                         {searchQuery ? 'Coba ubah kata kunci pencarian' : 'Belum ada produk untuk kategori ini'}
                       </p>
                     </div>
@@ -630,7 +630,7 @@ function Products() {
                 </tr>
               ) : (
                 currentProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap">
                       {product.imageUrl ? (
                         <img
@@ -640,39 +640,39 @@ function Products() {
                           onError={(e) => (e.target.src = 'https://via.placeholder.com/50')}
                         />
                       ) : (
-                        <span className="text-gray-500">T/A</span>
+                        <span className="text-gray-500 dark:text-gray-400">T/A</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {product.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                         {product.category || 'Lainnya'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatRupiah(product.price)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className={`font-medium ${product.stock <= 5 ? 'text-orange-500' : product.stock === 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <span className={`font-medium ${product.stock <= 5 ? 'text-orange-500 dark:text-orange-400' : product.stock === 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
                         {product.stock}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {product.barcode || 'T/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => startEdit(product)}
-                        className="text-primary-500 hover:text-primary-600 mr-4 transition-colors"
+                        className="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 mr-4 transition-colors"
                         aria-label={`Edit ${product.name}`}
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
-                        className="text-red-500 hover:text-red-600 transition-colors"
+                        className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors"
                         aria-label={`Hapus ${product.name}`}
                       >
                         Hapus

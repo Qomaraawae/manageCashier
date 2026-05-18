@@ -1,0 +1,6 @@
+{
+  "ttlConfig": {
+    "collection": "transactions",
+    "timestampField": "expireAt"
+  }
+}

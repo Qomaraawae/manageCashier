@@ -460,23 +460,23 @@ function Reports() {
   }
 
   return (
-    <div className="animate-fade-in p-6">
+    <div className="animate-fade-in p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
       {notification && <Notification message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
 
       {/* HEADER + TOMBOL */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Laporan Penjualan</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Laporan Penjualan</h1>
         <div className="flex flex-wrap gap-2 relative">
           <button
             onClick={exportToExcel}
-            className="btn bg-primary-500 text-white hover:bg-primary-600 flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg"
+            className="btn bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg"
           >
             <MdDownload size={20} />
             <span>Ekspor Excel</span>
           </button>
           <button
             onClick={() => setShowResetConfirm(true)}
-            className="btn bg-secondary-500 text-white hover:bg-secondary-600 flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg"
+            className="btn bg-gray-500 dark:bg-gray-600 text-white hover:bg-gray-600 dark:hover:bg-gray-700 flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg"
           >
             <MdRefresh size={20} />
             <span>Reset</span>
@@ -486,18 +486,18 @@ function Reports() {
           {showResetConfirm && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowResetConfirm(false)}></div>
-              <div className="absolute top-12 right-0 bg-white shadow-xl rounded-lg p-4 z-20 border border-gray-200 min-w-[250px]">
-                <p className="text-sm text-gray-700 mb-4">Apakah Anda yakin ingin mereset semua filter?</p>
+              <div className="absolute top-12 right-0 bg-white dark:bg-gray-800 shadow-xl rounded-lg p-4 z-20 border border-gray-200 dark:border-gray-700 min-w-[250px]">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Apakah Anda yakin ingin mereset semua filter?</p>
                 <div className="flex justify-end space-x-2">
                   <button
                     onClick={() => setShowResetConfirm(false)}
-                    className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                    className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     onClick={resetFilter}
-                    className="px-4 py-2 text-sm text-white bg-secondary-500 hover:bg-secondary-600 rounded transition-colors"
+                    className="px-4 py-2 text-sm text-white bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 rounded transition-colors"
                   >
                     Ya, Reset
                   </button>
@@ -510,17 +510,17 @@ function Reports() {
 
       {/* KARTU RINGKASAN */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-gradient-to-br from-blue-500 dark:from-blue-600 to-blue-600 dark:to-blue-700 rounded-lg shadow-lg dark:shadow-gray-900/50 p-6 text-white transition-colors">
           <h3 className="text-sm font-medium opacity-90">Total Pendapatan</h3>
           <p className="text-3xl font-bold mt-2">{formatRupiah(totalRevenue)}</p>
           <p className="text-xs opacity-75 mt-2">Dari {filteredSales.length} transaksi</p>
         </div>
-        <div className="bg-gradient-to-br from-secondary-500 to-secondary-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-gradient-to-br from-gray-600 dark:from-gray-700 to-gray-700 dark:to-gray-800 rounded-lg shadow-lg dark:shadow-gray-900/50 p-6 text-white transition-colors">
           <h3 className="text-sm font-medium opacity-90">Total Transaksi</h3>
           <p className="text-3xl font-bold mt-2">{filteredSales.length}</p>
           <p className="text-xs opacity-75 mt-2">Penjualan berhasil</p>
         </div>
-        <div className="bg-gradient-to-br from-accent-500 to-accent-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-gradient-to-br from-purple-500 dark:from-purple-600 to-purple-600 dark:to-purple-700 rounded-lg shadow-lg dark:shadow-gray-900/50 p-6 text-white transition-colors">
           <h3 className="text-sm font-medium opacity-90">Total Item Terjual</h3>
           <p className="text-3xl font-bold mt-2">{totalItems}</p>
           <p className="text-xs opacity-75 mt-2">Produk terjual</p>
@@ -528,22 +528,22 @@ function Reports() {
       </div>
 
       {/* FILTER PERIODE */}
-      <div className="mb-6 bg-white rounded-lg shadow p-4">
+      <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/30 p-4 transition-colors">
         <div className="flex items-center space-x-2 mb-3">
-          <MdDateRange className="text-gray-500" size={20} />
-          <h3 className="text-sm font-medium text-gray-700">Filter Periode</h3>
+          <MdDateRange className="text-gray-500 dark:text-gray-400" size={20} />
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter Periode</h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <input
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
           />
           {dateFilter && (
             <button
               onClick={() => setDateFilter('')}
-              className="flex items-center gap-1 px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 rounded-lg text-xs font-medium transition-colors duration-200"
+              className="flex items-center gap-1 px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 hover:text-red-700 dark:hover:text-red-300 rounded-lg text-xs font-medium transition-colors duration-200"
             >
               <MdClose size={14} />
               Hapus Filter Tanggal
@@ -554,14 +554,14 @@ function Reports() {
 
       {/* FILTER STATUS & METODE */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Status Pembayaran</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/30 p-4 transition-colors">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Status Pembayaran</h3>
           <div className="flex flex-wrap gap-2">
             {['all', 'paid', 'pending', 'cancel'].map(s => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === s ? 'bg-primary-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === s ? 'bg-blue-500 dark:bg-blue-600 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
               >
                 {s === 'all' ? 'Semua' : s === 'paid' ? 'Success' : s === 'pending' ? 'Pending' : 'Cancel'}
               </button>
@@ -569,14 +569,14 @@ function Reports() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Metode Pembayaran</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/30 p-4 transition-colors">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Metode Pembayaran</h3>
           <div className="flex flex-wrap gap-2">
             {['all', 'cash', 'QRIS'].map(m => (
               <button
                 key={m}
                 onClick={() => setMethodFilter(m)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${methodFilter === m ? 'bg-primary-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${methodFilter === m ? 'bg-blue-500 dark:bg-blue-600 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
               >
                 {m === 'all' ? 'Semua' : m === 'cash' ? 'Tunai' : 'QRIS'}
               </button>
@@ -586,16 +586,16 @@ function Reports() {
       </div>
 
       {/* TABEL DENGAN SCROLL HORIZONTAL */}
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
+      <div className="bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg overflow-hidden transition-colors">
+        <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MdOutlineSearch className="h-5 w-5 text-gray-400" />
+              <MdOutlineSearch className="h-5 w-5 text-gray-400 dark:text-gray-500" />
             </div>
             <input
               type="text"
               placeholder="Cari berdasarkan nama pelanggan atau ID transaksi..."
-              className="input pl-10 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent px-4 py-2"
+              className="input pl-10 w-full bg-white dark:bg-gray-800 border dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent px-4 py-2 transition-colors"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -605,27 +605,27 @@ function Reports() {
         {/* Container dengan overflow-x-auto untuk scroll horizontal */}
         <div className="overflow-x-auto">
           <div className="min-w-[1000px]">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">No</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID Transaksi</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pelanggan</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal & Waktu</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Item</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status Pembayaran</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-700 z-10">No</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">ID Transaksi</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Pelanggan</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Tanggal & Waktu</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Item</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status Pembayaran</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {currentSales.length === 0 ? (
                   <tr>
                     <td colSpan="8" className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center justify-center text-gray-400">
+                      <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                         <MdOutlineSearch size={48} className="mb-3" />
-                        <p className="text-gray-500 font-medium">Tidak ada data penjualan</p>
-                        <p className="text-sm text-gray-400 mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">Tidak ada data penjualan</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                           {searchTerm ? 'Coba ubah kata kunci pencarian' : 'Belum ada transaksi untuk filter ini'}
                         </p>
                       </div>
@@ -638,26 +638,26 @@ function Reports() {
                       : 0;
 
                     return (
-                      <tr key={sale.id} className="hover:bg-gray-50 transition-colors duration-150">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white z-10">
+                      <tr key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 sticky left-0 bg-white dark:bg-gray-800 z-10">
                           {indexOfFirstItem + index + 1}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-mono font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">#{sale.id.substring(0, 8)}</span>
+                          <span className="text-sm font-mono font-medium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">#{sale.id.substring(0, 8)}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{sale.customerName}</div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{sale.customerName}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-900 dark:text-white">
                             {format(sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(), 'dd MMM yyyy', { locale: id })}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             {format(sale.timestamp instanceof Date ? sale.timestamp : sale.timestamp.toDate(), 'HH:mm', { locale: id })}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                             {totalItems} item
                           </span>
                         </td>
@@ -665,12 +665,12 @@ function Reports() {
                           <PaymentStatusBadge paymentMethod={sale.paymentMethod} paymentStatus={sale.paymentStatus} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span className="text-sm font-semibold text-green-600">{formatRupiah(sale.total)}</span>
+                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatRupiah(sale.total)}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <button
                             onClick={() => generateReceiptPDF(sale, showNotification)}
-                            className="inline-flex items-center px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                            className="inline-flex items-center px-3 py-1.5 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-700 transition-colors duration-200 text-sm font-medium shadow-sm hover:shadow-md"
                           >
                             <MdPictureAsPdf size={16} className="mr-1" />
                             PDF
